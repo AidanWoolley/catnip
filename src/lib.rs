@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+#![cfg_attr(feature = "strict", deny(warnings))]
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
 #![feature(const_fn, const_panic, const_alloc_layout)]
