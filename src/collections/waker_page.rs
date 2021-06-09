@@ -4,8 +4,8 @@ use crate::sync::{
 };
 use std::{
     alloc::{
-        AllocRef,
         Global,
+        Allocator,
         Layout,
     },
     mem,
@@ -36,7 +36,7 @@ impl WakerPage {
     pub fn new(waker: SharedWaker) -> WakerPageRef {
         let layout = Layout::new::<WakerPage>();
         assert_eq!(layout.align(), 64);
-        let mut ptr: NonNull<WakerPage> = Global.alloc(layout).expect("Allocation failed").cast();
+        let mut ptr: NonNull<WakerPage> = Global.allocate(layout).expect("Allocation failed").cast();
         unsafe {
             let page = ptr.as_mut();
             ptr::write(&mut page.refcount as *mut _, WakerU64::new(1));
@@ -144,7 +144,7 @@ impl Drop for WakerPageRef {
                 return;
             }
             ptr::drop_in_place(self.0.as_mut());
-            Global.dealloc(self.0.cast(), Layout::for_value(self.0.as_ref()));
+            Global.deallocate(self.0.cast(), Layout::for_value(self.0.as_ref()));
         }
     }
 }
