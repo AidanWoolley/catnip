@@ -40,10 +40,8 @@ use crate::{
         },
     },
     runtime::Runtime,
-    scheduler::SchedulerHandle,
 };
 use futures::channel::mpsc;
-use futures::stream::StreamExt;
 use std::collections::HashMap;
 use std::{
     cell::RefCell,
@@ -61,43 +59,9 @@ pub struct Peer<RT: Runtime> {
 
 impl<RT: Runtime> Peer<RT> {
     pub fn new(rt: RT, arp: arp::Peer<RT>, file_table: FileTable) -> Self {
-        let (tx, rx) = mpsc::unbounded();
+        let (tx, _rx) = mpsc::unbounded();
         let inner = Rc::new(RefCell::new(Inner::new(rt.clone(), arp, file_table, tx)));
-        let bg_handle = rt.spawn(Self::background(rx, inner.clone()));
-        inner.borrow_mut().dead_socket_handle = Some(bg_handle);
         Self { inner }
-    }
-
-    async fn background(
-        mut dead_socket_rx: mpsc::UnboundedReceiver<FileDescriptor>,
-        inner: Rc<RefCell<Inner<RT>>>,
-    ) {
-        while let Some(fd) = dead_socket_rx.next().await {
-            let mut inner = inner.borrow_mut();
-
-            let (local, remote) = match inner.sockets.remove(&fd) {
-                None => continue,
-                Some(Socket::Established { local, remote }) => (local, remote),
-                _ => panic!(
-                    "Received dead socket message for non-established socket: {}",
-                    fd
-                ),
-            };
-            let socket = inner
-                .established
-                .remove(&(local, remote))
-                .unwrap_or_else(|| {
-                    panic!(
-                        "sockets/established inconsistency: {}, {:?}, {:?}",
-                        fd, local, remote
-                    )
-                });
-
-            // TODO: Assert we've been properly closed here.
-            // TODO: Recycle this FD.
-            info!("Cleaning up dead socket for FD {}", fd);
-            drop(socket);
-        }
     }
 
     pub fn socket(&self) -> FileDescriptor {
@@ -464,7 +428,6 @@ pub struct Inner<RT: Runtime> {
     arp: arp::Peer<RT>,
 
     dead_socket_tx: mpsc::UnboundedSender<FileDescriptor>,
-    dead_socket_handle: Option<SchedulerHandle>,
 }
 
 impl<RT: Runtime> Inner<RT> {
@@ -485,7 +448,6 @@ impl<RT: Runtime> Inner<RT> {
             rt,
             arp,
             dead_socket_tx,
-            dead_socket_handle: None,
         }
     }
 
