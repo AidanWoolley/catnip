@@ -166,14 +166,6 @@ where
     }
 
     pub fn remove(&mut self, _key: &K) -> Option<V> {
-        // if let Some(ref record) = self.map.remove(key) {
-        //     if let Some(ref expiry) = record.expiry {
-        //         if !expiry.has_expired(self.clock) {
-        //             return Some(record.value.clone());
-        //         }
-        //     }
-        // }
-
         None
     }
 
@@ -184,27 +176,6 @@ where
         trace!("HashTtlCache::get({:?})", key);
         debug!("self.map.len() -> {:?}", self.map.len());
         return self.map.get(key).map(|r| &r.value);
-        // match self.map.get(key) {
-        //     None => {
-        //         debug!("key `{:?}` not present", key);
-        //         None
-        //     },
-        //     Some(r) => match r.expiry.as_ref() {
-        //         None => {
-        //             // no expiration on entry.
-        //             Some(&r.value)
-        //         },
-        //         Some(e) => {
-        //             if e.has_expired(self.clock) {
-        //                 debug!("key `{:?}` present but expired", key);
-        //                 None
-        //             } else {
-        //                 // present and not yet exipred.
-        //                 Some(&r.value)
-        //             }
-        //         },
-        //     },
-        // }
     }
 
     pub fn advance_clock(&mut self, now: Instant) {
@@ -212,65 +183,8 @@ where
         self.clock = now;
     }
 
-    pub fn try_evict(&mut self, count: usize) -> HashMap<K, V> {
-        let mut evicted = HashMap::default();
-        let mut i = 0;
-        return evicted;
-
-        // loop {
-        //     match self.try_evict_once() {
-        //         Some((key, value)) => {
-        //             assert!(evicted.insert(key, value).is_none());
-        //         },
-        //         None => return evicted,
-        //     }
-
-        //     i += 1;
-        //     if i == count {
-        //         return evicted;
-        //     }
-        // }
-    }
-
-    fn try_evict_once(&mut self) -> Option<(K, V)> {
-        loop {
-            let (key, graveyard_expiry) = match self.graveyard.peek() {
-                Some(e) => ((*e).key.clone(), (*e).expiry.clone()),
-                None =>
-                // the graveyard is empty, so we cannot evict anything.
-                {
-                    return None
-                },
-            };
-
-            // the next tombstone has time from the future; nothing to evict.
-            if !graveyard_expiry.has_expired(self.clock) {
-                return None;
-            }
-
-            assert!(self.graveyard.pop().is_some());
-            match self.map.entry(key.clone()) {
-                HashMapEntry::Occupied(e) => {
-                    let (record_expiry, value) = {
-                        let record = e.get();
-                        let expiry = record.expiry.as_ref().unwrap();
-                        (expiry, record.value.clone())
-                    };
-
-                    if &graveyard_expiry == record_expiry {
-                        // the entry's expiry matches our tombstone; time to
-                        // evict.
-                        e.remove_entry();
-                        return Some((key.clone(), value));
-                    } else {
-                        // the entry hasn't expired yet; keep looking.
-                        assert!(!record_expiry.has_expired(self.clock));
-                        continue;
-                    }
-                },
-                HashMapEntry::Vacant(_) => continue,
-            }
-        }
+    pub fn try_evict(&mut self, _count: usize) -> HashMap<K, V> {
+        HashMap::default()
     }
 
     // todo: how do i implement `std::iter::IntoIterator` for this type?
