@@ -12,10 +12,10 @@
 #![feature(wake_trait)]
 #![feature(raw)]
 #![feature(try_blocks)]
-#![feature(type_alias_impl_trait)]
 #![warn(clippy::all)]
 #![recursion_limit = "512"]
 #![feature(test)]
+#![feature(min_type_alias_impl_trait)]
 extern crate test;
 
 #[macro_use]
