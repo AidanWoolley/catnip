@@ -27,7 +27,9 @@ pub struct UnackedSegment<RT: Runtime> {
 pub enum SenderState {
     Open,
     Closed,
+    /// We sent our FIN to close connection.
     SentFin,
+    /// The FIN we previously sent has been acknowledged by by the other side.
     FinAckd,
     Reset,
 }

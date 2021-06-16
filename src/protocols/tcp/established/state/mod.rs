@@ -31,6 +31,8 @@ use crate::{
 };
 use std::time::Duration;
 
+
+/// Transmission control block for representing our TCP connection.
 pub struct ControlBlock<RT: Runtime> {
     pub local: ipv4::Endpoint,
     pub remote: ipv4::Endpoint,
@@ -38,7 +40,9 @@ pub struct ControlBlock<RT: Runtime> {
     pub rt: RT,
     pub arp: arp::Peer<RT>,
 
+    /// The sender end of our connection.
     pub sender: Sender<RT>,
+    /// The receiver end of our connection.
     pub receiver: Receiver<RT>,
 }
 
@@ -74,9 +78,13 @@ impl<RT: Runtime> ControlBlock<RT> {
         self.sender.close()
     }
 
+    /// Fetch a TCP header filling out various values based on our current state.
     pub fn tcp_header(&self) -> TcpHeader {
         let mut header = TcpHeader::new(self.local.port, self.remote.port);
         header.window_size = self.receiver.hdr_window_size();
+
+        // Check if we have acknowledged all bytes that we have received. If not, piggy back an ACK
+        // on this message.
         if let Some(ack_seq_no) = self.receiver.current_ack() {
             header.ack_num = ack_seq_no;
             header.ack = true;
@@ -84,10 +92,12 @@ impl<RT: Runtime> ControlBlock<RT> {
         header
     }
 
+    /// Transmit this message to our connected peer.
     pub fn emit(&self, header: TcpHeader, data: RT::Buf, remote_link_addr: MacAddress) {
         if header.ack {
-            self.receiver.ack_sent(header.ack_num);
+            self.receiver.update_ack_sent(header.ack_num);
         }
+
         debug!("Sending {} bytes + {:?}", data.len(), header);
         let segment = TcpSegment {
             ethernet2_hdr: Ethernet2Header {

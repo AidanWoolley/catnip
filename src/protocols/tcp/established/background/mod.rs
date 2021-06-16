@@ -5,7 +5,7 @@ mod sender;
 
 use self::{
     acknowledger::acknowledger,
-    closer::closer,
+    closer::connection_terminated,
     retransmitter::retransmitter,
     sender::sender,
 };
@@ -43,7 +43,7 @@ pub fn background<RT: Runtime>(
         let sender = sender(cb.clone()).fuse();
         futures::pin_mut!(sender);
 
-        let closer = closer(cb).fuse();
+        let closer = connection_terminated(cb).fuse();
         futures::pin_mut!(closer);
 
         let r = futures::select_biased! {
