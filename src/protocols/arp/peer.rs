@@ -5,10 +5,10 @@ use std::marker::PhantomData;
 use super::{
     cache::ArpCache,
     pdu::{
-        ArpMessage,
         ArpOperation,
         ArpPdu,
     },
+    msg::ArpMessage,
 };
 use crate::{
     fail::Fail,

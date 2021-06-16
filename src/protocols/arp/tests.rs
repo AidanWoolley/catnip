@@ -1,36 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use super::pdu::{
-    ArpOperation,
-    ArpPdu,
-};
+use super::pdu::{ArpOperation, ArpPdu};
+
 use crate::{
-    fail::Fail,
-    protocols::ethernet2::frame::{
-        Ethernet2Header,
-    },
-    runtime::Runtime,
-    test_helpers,
-};
-use futures::{
-    task::{
-        noop_waker_ref,
-        Context,
-    },
-    FutureExt,
-};
-use std::collections::HashMap;
-use must_let::must_let;
-use std::{
-    future::Future,
-    task::Poll,
-    time::{
-        Duration,
-        Instant,
-    },
+    fail::Fail, protocols::ethernet2::frame::Ethernet2Header, runtime::Runtime, test_helpers,
 };
 
+use futures::{
+    task::{noop_waker_ref, Context},
+    FutureExt,
+};
+
+use must_let::must_let;
+
+use std::{
+    collections::HashMap,
+    future::Future,
+    task::Poll,
+    time::{Duration, Instant},
+};
+
+/// Tests that requests get replied.
 #[test]
 fn immediate_reply() {
     // tests to ensure that an are request results in a reply.
