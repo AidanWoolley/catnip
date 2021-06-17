@@ -28,8 +28,11 @@ const MAX_OUT_OF_ORDER: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ReceiverState {
+    /// Connection has been established.
     Open,
+    /// We have received a FIN from other side.
     ReceivedFin,
+    /// We have ACKed the FIN.
     AckdFin,
 }
 
@@ -50,7 +53,9 @@ pub struct Receiver<RT: Runtime> {
     //
     pub base_seq_no: WatchedValue<SeqNumber>,
     pub recv_queue: RefCell<VecDeque<RT::Buf>>,
+    /// Running counter of ack sequence number we have sent to peer.
     pub ack_seq_no: WatchedValue<SeqNumber>,
+    /// Our sequence number based on how much data we have sent.
     pub recv_seq_no: WatchedValue<SeqNumber>,
 
     pub ack_deadline: WatchedValue<Option<Instant>>,
@@ -93,24 +98,34 @@ impl<RT: Runtime> Receiver<RT> {
         hdr_window_size
     }
 
+    /// Returns the ack sequence number to use for the next packet based on all the bytes we have
+    /// received. This ack sequence number will be piggy backed on the next packet send.
+    /// If all received bytes have been acknowledged returns None.
     pub fn current_ack(&self) -> Option<SeqNumber> {
         let ack_seq_no = self.ack_seq_no.get();
         let recv_seq_no = self.recv_seq_no.get();
-        if ack_seq_no != recv_seq_no {
+
+        // It is okay if ack_seq_no is greater than the seq number. This can happen when we have
+        // ACKed a FIN so our ACK number is +1 greater than our seq number.
+        if ack_seq_no == recv_seq_no {
             Some(recv_seq_no)
         } else {
             None
         }
     }
 
-    pub fn ack_sent(&self, seq_no: SeqNumber) {
+    /// This packet has the ACK bit set. Ensure this ack sequence number is correct and update our
+    /// internal ACK sequence counter.
+    pub fn update_ack_sent(&self, ack_seq: SeqNumber) {
+        // FINs are special. Even though we don't receive any data, our ACK should be + 1 the
+        // seq we received.
         if self.state.get() == ReceiverState::AckdFin {
-            assert_eq!(seq_no, self.recv_seq_no.get() + Wrapping(1));
+            assert_eq!(ack_seq, self.recv_seq_no.get() + Wrapping(1));
         } else {
-            assert_eq!(seq_no, self.recv_seq_no.get());
+            assert_eq!(ack_seq, self.recv_seq_no.get());
         }
         self.ack_deadline.set(None);
-        self.ack_seq_no.set(seq_no);
+        self.ack_seq_no.set(ack_seq);
     }
 
     pub fn peek(&self) -> Result<RT::Buf, Fail> {
