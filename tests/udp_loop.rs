@@ -6,7 +6,7 @@ use catnip::{
         ip,
         ipv4,
     },
-    sync::BytesMut,
+    collections::bytes::BytesMut,
     test_helpers,
 };
 use futures::{

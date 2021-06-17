@@ -31,7 +31,7 @@ use catnip::{
         Scheduler,
         SchedulerHandle,
     },
-    sync::{
+    collections::bytes::{
         Bytes,
         BytesMut,
     },

@@ -267,9 +267,9 @@ impl<RT: Runtime> Receiver<RT> {
 #[cfg(test)]
 mod tests {
     use super::Receiver;
+    use crate::collections::bytes::BytesMut;
     use crate::{
         fail::Fail,
-        sync::BytesMut,
     };
     use must_let::must_let;
     use std::{
