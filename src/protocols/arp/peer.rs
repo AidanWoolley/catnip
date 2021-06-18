@@ -3,6 +3,7 @@
 
 use std::marker::PhantomData;
 use super::{
+    options::ArpOptions,
     cache::ArpCache,
     pdu::{
         ArpOperation,
@@ -41,25 +42,29 @@ pub struct ArpPeer<RT: Runtime> {
     // TODO: Move this to a strong owner that gets polled once.
     cache: Rc<RefCell<ArpCache>>,
     background: Rc<SchedulerHandle>,
+    options: ArpOptions,
 }
 
 impl<RT: Runtime> ArpPeer<RT> {
-    pub fn new(now: Instant, rt: RT) -> Result<ArpPeer<RT>, Fail> {
-        let options = rt.arp_options();
+    pub fn new(now: Instant, rt: RT, options: ArpOptions) -> Result<ArpPeer<RT>, Fail> {
         let cache = Rc::new(RefCell::new(ArpCache::new(
             now,
             Some(options.cache_ttl),
             options.disable_arp,
         )));
+
+        for (&ipv4_addr, &link_addr) in &options.initial_values {
+            cache.borrow_mut().insert(link_addr, ipv4_addr);
+        }
+
         let handle = rt.spawn(Self::background(rt.clone(), cache.clone()));
         let peer = ArpPeer {
             rt,
             cache,
             background: Rc::new(handle),
+            options,
         };
-        for (&link_addr, &ipv4_addr) in &options.initial_values {
-            peer.insert(ipv4_addr, link_addr);
-        }
+
         Ok(peer)
     }
 
@@ -167,6 +172,7 @@ impl<RT: Runtime> ArpPeer<RT> {
     pub fn query(&self, ipv4_addr: Ipv4Addr) -> impl Future<Output = Result<MacAddress, Fail>> {
         let rt = self.rt.clone();
         let cache = self.cache.clone();
+        let arp_options = self.options.clone();
         async move {
             if let Some(&link_addr) = cache.borrow().get_link_addr(ipv4_addr) {
                 return Ok(link_addr);
@@ -192,7 +198,6 @@ impl<RT: Runtime> ArpPeer<RT> {
             // from TCP/IP illustrated, chapter 4:
             // > The frequency of the ARP request is very close to one per
             // > second, the maximum suggested by [RFC1122].
-            let arp_options = rt.arp_options();
 
             for i in 0..arp_options.retry_count + 1 {
                 rt.transmit(msg.clone());
