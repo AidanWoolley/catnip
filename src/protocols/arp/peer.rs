@@ -1,39 +1,30 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use std::marker::PhantomData;
 use super::{
-    options::ArpOptions,
     cache::ArpCache,
-    pdu::{
-        ArpOperation,
-        ArpPdu,
-    },
     msg::ArpMessage,
+    options::ArpOptions,
+    pdu::{ArpOperation, ArpPdu},
 };
 use crate::{
     fail::Fail,
     protocols::ethernet2::{
-        frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        frame::{EtherType2, Ethernet2Header},
         MacAddress,
     },
     runtime::Runtime,
     scheduler::SchedulerHandle,
 };
 use futures::FutureExt;
-use std::collections::HashMap;
 use std::{
     cell::RefCell,
+    collections::HashMap,
     future::Future,
+    marker::PhantomData,
     net::Ipv4Addr,
     rc::Rc,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 #[derive(Clone)]
@@ -148,7 +139,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                 debug!("Responding {:?}", reply);
                 self.rt.transmit(reply);
                 Ok(())
-            },
+            }
             ArpOperation::Reply => {
                 debug!(
                     "reply from `{}/{}`",
@@ -158,7 +149,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                     .borrow_mut()
                     .insert(pdu.sender_protocol_addr, pdu.sender_hardware_addr);
                 Ok(())
-            },
+            }
         }
     }
 
