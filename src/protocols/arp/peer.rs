@@ -50,12 +50,9 @@ impl<RT: Runtime> ArpPeer<RT> {
         let cache = Rc::new(RefCell::new(ArpCache::new(
             now,
             Some(options.cache_ttl),
+            Some(&options.initial_values),
             options.disable_arp,
         )));
-
-        for (&ipv4_addr, &link_addr) in &options.initial_values {
-            cache.borrow_mut().insert(link_addr, ipv4_addr);
-        }
 
         let handle = rt.spawn(Self::background(rt.clone(), cache.clone()));
         let peer = ArpPeer {
@@ -217,13 +214,5 @@ impl<RT: Runtime> ArpPeer<RT> {
 
     pub fn export_cache(&self) -> HashMap<Ipv4Addr, MacAddress> {
         self.cache.borrow().export()
-    }
-
-    pub fn import_cache(&self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.cache.borrow_mut().import(cache);
-    }
-
-    pub fn insert(&self, ipv4_addr: Ipv4Addr, link_addr: MacAddress) {
-        self.cache.borrow_mut().insert(ipv4_addr, link_addr);
     }
 }
