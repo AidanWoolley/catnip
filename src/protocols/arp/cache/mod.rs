@@ -1,162 +1,120 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-// todo: remove once all functions are referenced.
-#![allow(dead_code)]
-
 #[cfg(test)]
 mod tests;
 
-use crate::{
-    collections::HashTtlCache,
-    protocols::ethernet2::MacAddress,
-};
+use crate::{collections::HashTtlCache, protocols::ethernet2::MacAddress};
+
 use futures::{
-    channel::oneshot::{
-        channel,
-        Sender,
-    },
+    channel::oneshot::{channel, Receiver, Sender},
     FutureExt,
 };
-use std::collections::HashMap;
+
 use std::{
+    collections::HashMap,
     future::Future,
     net::Ipv4Addr,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 const DUMMY_MAC_ADDRESS: MacAddress = MacAddress::new([0; 6]);
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Record {
     link_addr: MacAddress,
     ipv4_addr: Ipv4Addr,
 }
 
+///
+/// # ARP Cache
+/// - TODO: Allow multiple waiters for the same address
+/// - TODO: Deregister waiters here when the receiver goes away.
+/// - TODO: Implement eviction.
+/// - TODO: Implement remove.
 pub struct ArpCache {
+    /// Cache for IPv4 Addresses
     cache: HashTtlCache<Ipv4Addr, Record>,
-    rmap: HashMap<MacAddress, Ipv4Addr>,
 
-    // TODO: Allow multiple waiters for the same address
-    // TODO: Deregister waiters here when the receiver goes away.
+    /// Peers waiting for address resolution.
     waiters: HashMap<Ipv4Addr, Sender<MacAddress>>,
-    arp_disabled: bool,
+
+    /// Disable ARP?
+    disable: bool,
 }
 
 impl ArpCache {
-    pub fn new(now: Instant, default_ttl: Option<Duration>, arp_disabled: bool) -> ArpCache {
+    /// Creates an ARP Cache.
+    pub fn new(now: Instant, default_ttl: Option<Duration>, disable: bool) -> ArpCache {
         ArpCache {
             cache: HashTtlCache::new(now, default_ttl),
-            rmap: HashMap::default(),
             waiters: HashMap::default(),
-            arp_disabled,
+            disable,
         }
     }
 
-    pub fn insert_with_ttl(
-        &mut self,
-        ipv4_addr: Ipv4Addr,
-        link_addr: MacAddress,
-        _ttl: Option<Duration>,
-    ) -> Option<MacAddress> {
-        let record = Record {
-            ipv4_addr,
-            link_addr,
-        };
-
-        let result = self
-            .cache
-            .insert(ipv4_addr, record)
-            .map(|r| r.link_addr);
-        self.rmap.insert(link_addr, ipv4_addr);
-        if let Some(sender) = self.waiters.remove(&ipv4_addr) {
-            let _ = sender.send(link_addr);
+    // Import address resolutions tot he ARP cache.
+    pub fn import(&mut self, cache: HashMap<Ipv4Addr, MacAddress>) {
+        self.clear();
+        for (k, v) in &cache {
+            self.insert(*k, *v);
         }
-        result
     }
 
+    // Exports address resolutions that are stored in the ARP cache.
+    pub fn export(&self) -> HashMap<Ipv4Addr, MacAddress> {
+        let mut map: HashMap<Ipv4Addr, MacAddress> = HashMap::default();
+        for (k, v) in self.cache.iter() {
+            map.insert(*k, v.link_addr);
+        }
+        map
+    }
+
+    /// Caches an address resolution.
     pub fn insert(&mut self, ipv4_addr: Ipv4Addr, link_addr: MacAddress) -> Option<MacAddress> {
         let record = Record {
-            ipv4_addr,
             link_addr,
+            ipv4_addr,
         };
         if let Some(sender) = self.waiters.remove(&ipv4_addr) {
             let _ = sender.send(link_addr);
         }
-        let result = self.cache.insert(ipv4_addr, record).map(|r| r.link_addr);
-        self.rmap.insert(link_addr, ipv4_addr);
-        result
+        self.cache.insert(ipv4_addr, record).map(|r| r.link_addr)
     }
 
-    pub fn remove(&mut self, _ipv4_addr: Ipv4Addr) {
-        return;
-        // if let Some(record) = self.cache.remove(&ipv4_addr) {
-        //     assert!(self.rmap.remove(&record.link_addr).is_some());
-        // } else {
-        //     panic!(
-        //         "attempt to remove unrecognized engine (`{}`) from ARP cache",
-        //         ipv4_addr
-        //     );
-        // }
-    }
-
+    /// Gets the MAC address of given IPv4 address.
     pub fn get_link_addr(&self, ipv4_addr: Ipv4Addr) -> Option<&MacAddress> {
-        if self.arp_disabled {
-            return Some(&DUMMY_MAC_ADDRESS);
+        if self.disable {
+            Some(&DUMMY_MAC_ADDRESS)
+        } else {
+            self.cache.get(&ipv4_addr).map(|r| &r.link_addr)
         }
-        let result = self.cache.get(&ipv4_addr).map(|r| &r.link_addr);
-        debug!("`{:?}` -> `{:?}`", ipv4_addr, result);
-        result
     }
 
+    /// Waits for link address.
     pub fn wait_link_addr(&mut self, ipv4_addr: Ipv4Addr) -> impl Future<Output = MacAddress> {
-        let (tx, rx) = channel();
-        if self.arp_disabled {
+        let (tx, rx): (Sender<MacAddress>, Receiver<MacAddress>) = channel();
+        if self.disable {
             let _ = tx.send(DUMMY_MAC_ADDRESS);
         } else if let Some(r) = self.cache.get(&ipv4_addr) {
             let _ = tx.send(r.link_addr);
         } else {
-            assert!(self.waiters.insert(ipv4_addr, tx).is_none(), "Duplicate waiter for {:?}", ipv4_addr);
+            assert!(
+                self.waiters.insert(ipv4_addr, tx).is_none(),
+                "Duplicate waiter for {:?}",
+                ipv4_addr
+            );
         }
         rx.map(|r| r.expect("Dropped waiter?"))
     }
 
-    pub fn get_ipv4_addr(&self, link_addr: MacAddress) -> Option<&Ipv4Addr> {
-        assert_ne!(link_addr, DUMMY_MAC_ADDRESS);
-        self.rmap.get(&link_addr)
-    }
-
+    /// Advances internal clock of the ARP Cache.
     pub fn advance_clock(&mut self, now: Instant) {
         self.cache.advance_clock(now)
     }
 
-    pub fn try_evict(&mut self, _count: usize) {
-        // TODO: This shows up in profiles(!), reimplement properly.
-        // It's likely because it allocates on every iteration, even if it doesn't actually evict
-        // anything. (And, the allocated value isn't even actually used...)
-    }
-
+    /// Clears the ARP cache.
     pub fn clear(&mut self) {
         self.cache.clear();
-        self.rmap.clear();
-    }
-
-    pub fn export(&self) -> HashMap<Ipv4Addr, MacAddress> {
-        let mut map = HashMap::default();
-        for (k, v) in self.cache.iter() {
-            map.insert(*k, v.link_addr);
-        }
-
-        map
-    }
-
-    pub fn import(&mut self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.clear();
-        for (k, v) in &cache {
-            self.insert(k.clone(), v.clone());
-        }
     }
 }
