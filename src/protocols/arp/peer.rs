@@ -56,16 +56,15 @@ impl<RT: Runtime> ArpPeer<RT> {
         Ok(peer)
     }
 
+    /// Background task that cleans up the ARP cache from time to time.
     async fn background(rt: RT, cache: Rc<RefCell<ArpCache>>) {
         loop {
             let current_time = rt.now();
             {
                 let mut cache = cache.borrow_mut();
                 cache.advance_clock(current_time);
-                // TODO: Reenable this when we fix the cache datastructure.
-                // cache.try_evict(2);
+                cache.clear();
             }
-            // TODO: Make this more precise.
             rt.wait(Duration::from_secs(1)).await;
         }
     }
