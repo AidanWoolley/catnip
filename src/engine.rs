@@ -256,9 +256,4 @@ impl<RT: Runtime> Engine<RT> {
     pub fn export_arp_cache(&self) -> HashMap<Ipv4Addr, MacAddress> {
         self.arp.export_cache()
     }
-
-    #[cfg(test)]
-    pub fn import_arp_cache(&self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.arp.import_cache(cache)
-    }
 }

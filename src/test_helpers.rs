@@ -83,9 +83,6 @@ impl TestRuntime {
         arp_options.retry_count = 2;
         arp_options.cache_ttl = Duration::from_secs(600);
         arp_options.request_timeout = Duration::from_secs(1);
-        arp_options.initial_values.insert(ALICE_MAC, ALICE_IPV4);
-        arp_options.initial_values.insert(BOB_MAC, BOB_IPV4);
-        arp_options.initial_values.insert(CARRIE_MAC, CARRIE_IPV4);
 
         let mut tcp_options = tcp::Options::default();
         tcp_options.advertised_mss = 2048;
