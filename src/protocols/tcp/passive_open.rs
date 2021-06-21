@@ -173,7 +173,7 @@ impl<RT: Runtime> PassiveSocket<RT> {
                 Some(w) => (tcp_options.window_scale as u32, w),
                 None => (0, 0),
             };
-            let remote_window_size = (header_window_size as u32)
+            let remote_window_size = (header_window_size)
                 .checked_shl(remote_window_scale as u32)
                 .expect("TODO: Window size overflow")
                 .try_into()

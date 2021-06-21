@@ -156,7 +156,7 @@ impl<RT: Runtime> Icmpv4Peer<RT> {
     ) -> impl Future<Output = Result<Duration, Fail>> {
         let timeout = timeout.unwrap_or_else(|| Duration::from_millis(5000));
         let id = {
-            let mut state = 0xFFFF as u32;
+            let mut state: u32 = 0xFFFF;
             let addr_octets = self.rt.local_ipv4_addr().octets();
             state += NetworkEndian::read_u16(&addr_octets[0..2]) as u32;
             state += NetworkEndian::read_u16(&addr_octets[3..4]) as u32;
