@@ -38,9 +38,9 @@ impl<RT: Runtime> Ipv4Peer<RT> {
         let tcp = tcp::Peer::new(rt.clone(), arp, file_table);
         Ipv4Peer {
             rt,
-            udp,
             icmpv4,
             tcp,
+            udp,
         }
     }
 

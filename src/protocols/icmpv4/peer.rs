@@ -83,8 +83,8 @@ impl<RT: Runtime> Icmpv4Peer<RT> {
         Icmpv4Peer {
             rt,
             arp,
-            tx,
             handle,
+            tx,
             inner,
         }
     }
