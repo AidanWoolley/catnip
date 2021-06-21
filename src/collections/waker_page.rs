@@ -33,6 +33,7 @@ pub struct WakerPage {
 }
 
 impl WakerPage {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(waker: SharedWaker) -> WakerPageRef {
         let layout = Layout::new::<WakerPage>();
         assert_eq!(layout.align(), 64);
