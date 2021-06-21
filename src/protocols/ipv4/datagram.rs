@@ -172,7 +172,7 @@ impl Ipv4Header {
                 details: "IPv4 checksum is 0xFFFF",
             });
         }
-        if header_checksum != ipv4_checksum(&hdr_buf[..]) {
+        if header_checksum != ipv4_checksum(hdr_buf) {
             return Err(Fail::Malformed {
                 details: "Invalid IPv4 checksum",
             });
