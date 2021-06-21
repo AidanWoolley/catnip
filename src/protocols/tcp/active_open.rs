@@ -265,7 +265,7 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
                 rt.wait(handshake_timeout).await;
             }
             let mut r = result.borrow_mut();
-            r.waker.take().map(|w| w.wake());
+            if let Some(w) = r.waker.take() { w.wake() }
             r.result.replace(Err(Fail::Timeout {}));
         }
     }
