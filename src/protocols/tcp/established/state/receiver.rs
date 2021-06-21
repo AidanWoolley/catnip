@@ -239,7 +239,7 @@ impl<RT: Runtime> Receiver<RT> {
 
         self.recv_seq_no.modify(|r| r + Wrapping(buf.len() as u32));
         self.recv_queue.borrow_mut().push_back(buf);
-        self.waker.borrow_mut().take().map(|w| w.wake());
+        if let Some(w) = self.waker.borrow_mut().take() { w.wake() }
 
         // TODO: How do we handle when the other side is in PERSIST state here?
         if self.ack_deadline.get().is_none() {
