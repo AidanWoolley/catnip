@@ -256,8 +256,7 @@ impl<RT: Runtime> Sender<RT> {
 
         // TODO: Is this the right check?
         let window_size = (window_size_hdr as u32)
-            .checked_shl(self.window_scale as u32)
-            .ok_or_else(|| Fail::Ignored {
+            .checked_shl(self.window_scale as u32).ok_or(Fail::Ignored {
                 details: "Window size overflow",
             })?;
 
