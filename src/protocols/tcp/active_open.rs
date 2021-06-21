@@ -205,8 +205,8 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
         let sender = Sender::new(expected_seq, tx_window_size, remote_window_scale, mss);
         let receiver = Receiver::new(remote_seq_num, rx_window_size, local_window_scale);
         let cb = ControlBlock {
-            local: self.local.clone(),
-            remote: self.remote.clone(),
+            local: self.local,
+            remote: self.remote,
             rt: self.rt.clone(),
             arp: self.arp.clone(),
             sender,
