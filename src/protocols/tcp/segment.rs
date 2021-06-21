@@ -278,7 +278,7 @@ impl TcpHeader {
 
         if !rx_checksum_offload {
             let checksum = NetworkEndian::read_u16(&hdr_buf[16..18]);
-            if checksum != tcp_checksum(ipv4_header, &hdr_buf[..], &data_buf[..]) {
+            if checksum != tcp_checksum(ipv4_header, hdr_buf, data_buf) {
                 return Err(Fail::Malformed {
                     details: "TCP checksum mismatch",
                 });
