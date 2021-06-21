@@ -247,7 +247,7 @@ impl<RT: Runtime> UdpPeer<RT> {
                 details: "Invalid file descriptor",
             }),
         };
-        PopFuture { listener, fd }
+        PopFuture { fd, listener }
     }
 
     pub fn close(&self, fd: FileDescriptor) -> Result<(), Fail> {
