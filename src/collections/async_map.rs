@@ -39,6 +39,12 @@ pub struct FutureMap<K: Clone + Hash + Eq + Unpin, F: Future> {
     map: HashMap<K, usize>,
 }
 
+impl<K: Clone + Hash + Eq + Unpin, F: Future> Default for FutureMap<K, F> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Clone + Hash + Eq + Unpin, F: Future> FutureMap<K, F> {
     pub fn new() -> Self {
         Self {
