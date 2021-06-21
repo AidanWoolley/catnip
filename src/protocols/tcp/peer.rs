@@ -300,7 +300,7 @@ impl<RT: Runtime> Peer<RT> {
         match inner.established.get(&key) {
             Some(ref s) => s.send(buf),
             None => {
-                return Err(Fail::Malformed {
+                Err(Fail::Malformed {
                     details: "Socket not established",
                 })
             },
@@ -344,7 +344,7 @@ impl<RT: Runtime> Peer<RT> {
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.remote_mss()),
             None => {
-                return Err(Fail::Malformed {
+                Err(Fail::Malformed {
                     details: "Socket not established",
                 })
             },
@@ -365,7 +365,7 @@ impl<RT: Runtime> Peer<RT> {
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.current_rto()),
             None => {
-                return Err(Fail::Malformed {
+                Err(Fail::Malformed {
                     details: "Socket not established",
                 })
             },
@@ -386,7 +386,7 @@ impl<RT: Runtime> Peer<RT> {
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.endpoints()),
             None => {
-                return Err(Fail::Malformed {
+                Err(Fail::Malformed {
                     details: "Socket not established",
                 })
             },
