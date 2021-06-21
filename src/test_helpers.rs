@@ -225,11 +225,11 @@ impl Runtime for TestRuntime {
     }
 
     fn local_link_addr(&self) -> MacAddress {
-        self.inner.borrow().link_addr.clone()
+        self.inner.borrow().link_addr
     }
 
     fn local_ipv4_addr(&self) -> Ipv4Addr {
-        self.inner.borrow().ipv4_addr.clone()
+        self.inner.borrow().ipv4_addr
     }
 
     fn tcp_options(&self) -> tcp::Options {

@@ -114,7 +114,7 @@ impl<RT: Runtime> Peer<RT> {
         }
 
         let socket = PassiveSocket::new(local, backlog, inner.rt.clone(), inner.arp.clone());
-        assert!(inner.passive.insert(local.clone(), socket).is_none());
+        assert!(inner.passive.insert(local, socket).is_none());
         inner.sockets.insert(fd, Socket::Listening { local });
         Ok(())
     }
@@ -147,11 +147,11 @@ impl<RT: Runtime> Peer<RT> {
         };
         let fd = inner.file_table.alloc(File::TcpSocket);
         let established = EstablishedSocket::new(cb, fd, inner.dead_socket_tx.clone());
-        let key = (established.cb.local.clone(), established.cb.remote.clone());
+        let key = (established.cb.local, established.cb.remote);
 
         let socket = Socket::Established {
-            local: established.cb.local.clone(),
-            remote: established.cb.remote.clone(),
+            local: established.cb.local,
+            remote: established.cb.remote,
         };
         assert!(inner.sockets.insert(fd, socket).is_none());
         assert!(inner.established.insert(key, established).is_none());
@@ -182,13 +182,13 @@ impl<RT: Runtime> Peer<RT> {
             let local = ipv4::Endpoint::new(inner.rt.local_ipv4_addr(), local_port);
 
             let socket = Socket::Connecting {
-                local: local.clone(),
-                remote: remote.clone(),
+                local,
+                remote,
             };
             inner.sockets.insert(fd, socket);
 
             let local_isn = inner.isn_generator.generate(&local, &remote);
-            let key = (local.clone(), remote.clone());
+            let key = (local, remote);
             let socket = ActiveOpenSocket::new(
                 local_isn,
                 local,
@@ -311,7 +311,7 @@ impl<RT: Runtime> Peer<RT> {
         let inner = self.inner.borrow_mut();
         match inner.sockets.get(&fd) {
             Some(Socket::Established { local, remote }) => {
-                let key = (local.clone(), remote.clone());
+                let key = (*local, *remote);
                 match inner.established.get(&key) {
                     Some(ref s) => s.close()?,
                     None => {

@@ -203,8 +203,8 @@ impl<RT: Runtime> PassiveSocket<RT> {
             );
             self.inflight.remove(&remote);
             let cb = ControlBlock {
-                local: self.local.clone(),
-                remote: remote.clone(),
+                local: self.local,
+                remote,
                 rt: self.rt.clone(),
                 arp: self.arp.clone(),
                 sender,
@@ -231,7 +231,7 @@ impl<RT: Runtime> PassiveSocket<RT> {
             local_isn,
             remote_isn,
             self.local,
-            remote.clone(),
+            remote,
             self.rt.clone(),
             self.arp.clone(),
             self.ready.clone(),
