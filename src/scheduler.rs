@@ -28,7 +28,6 @@ use std::{
         Waker,
     },
 };
-use tracy_client::static_span;
 use unicycle::pin_slab::PinSlab;
 
 pub enum Operation<RT: Runtime> {
@@ -152,7 +151,6 @@ impl<F: Future<Output = ()> + Unpin> Scheduler<F> {
     }
 
     pub fn poll(&self) {
-        let _s = static_span!();
         let mut inner = self.inner.borrow_mut();
         // inner.root_waker.register(ctx.waker());
         for page_ix in 0..inner.pages.len() {
