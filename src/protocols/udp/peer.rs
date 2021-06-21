@@ -204,7 +204,7 @@ impl<RT: Runtime> UdpPeer<RT> {
         })?;
         let mut l = listener.borrow_mut();
         l.buf.push_back((remote, data));
-        l.waker.take().map(|w| w.wake());
+        if let Some(w) = l.waker.take() { w.wake() }
         Ok(())
     }
 
