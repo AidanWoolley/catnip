@@ -25,6 +25,7 @@ impl TryFrom<u16> for Port {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<u16> for Port {
     fn into(self) -> u16 {
         self.0.get()
