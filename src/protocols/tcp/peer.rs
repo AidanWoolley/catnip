@@ -492,8 +492,7 @@ impl<RT: Runtime> Inner<RT> {
         // TODO: Make this work pending on ARP resolution if needed.
         let remote_link_addr =
             self.arp
-                .try_query(remote.addr)
-                .ok_or_else(|| Fail::ResourceNotFound {
+                .try_query(remote.addr).ok_or(Fail::ResourceNotFound {
                     details: "RST destination not in ARP cache",
                 })?;
 
