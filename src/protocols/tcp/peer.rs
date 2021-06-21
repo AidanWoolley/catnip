@@ -147,7 +147,7 @@ impl<RT: Runtime> Peer<RT> {
         };
         let fd = inner.file_table.alloc(File::TcpSocket);
         let established = EstablishedSocket::new(cb, fd, inner.dead_socket_tx.clone());
-        let key = (established.cb.local.clone(), established.cb.remote.clone());
+        let key = (established.cb.local, established.cb.remote);
 
         let socket = Socket::Established {
             local: established.cb.local.clone(),
