@@ -114,7 +114,7 @@ impl<RT: Runtime> Peer<RT> {
         }
 
         let socket = PassiveSocket::new(local, backlog, inner.rt.clone(), inner.arp.clone());
-        assert!(inner.passive.insert(local.clone(), socket).is_none());
+        assert!(inner.passive.insert(local, socket).is_none());
         inner.sockets.insert(fd, Socket::Listening { local });
         Ok(())
     }
