@@ -199,7 +199,7 @@ impl<RT: Runtime> UdpPeer<RT> {
             .map(|p| ipv4::Endpoint::new(ipv4_header.src_addr, p));
 
         // TODO: Send ICMPv4 error in this condition.
-        let listener = inner.bound.get_mut(&local).ok_or_else(|| Fail::Malformed {
+        let listener = inner.bound.get_mut(&local).ok_or(Fail::Malformed {
             details: "Port not bound",
         })?;
         let mut l = listener.borrow_mut();
