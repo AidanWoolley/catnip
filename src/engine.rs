@@ -35,7 +35,6 @@ use std::{
     net::Ipv4Addr,
     time::Duration,
 };
-use tracy_client::static_span;
 
 #[cfg(test)]
 use crate::protocols::ethernet2::MacAddress;
@@ -74,7 +73,6 @@ impl<RT: Runtime> Engine<RT> {
     }
 
     pub fn receive(&mut self, bytes: RT::Buf) -> Result<(), Fail> {
-        let _s = static_span!();
         let (header, payload) = Ethernet2Header::parse(bytes)?;
         debug!("Engine received {:?}", header);
         if self.rt.local_link_addr() != header.dst_addr && !header.dst_addr.is_broadcast() {

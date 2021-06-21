@@ -22,7 +22,6 @@ use libc::c_int;
 use std::{
     time::Instant,
 };
-use tracy_client::static_span;
 
 const TIMER_RESOLUTION: usize = 64;
 const MAX_RECV_ITERS: usize = 2;
@@ -96,7 +95,6 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn push(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t) -> QToken {
-        let _s = static_span!();
         let buf = self.rt.clone_sgarray(sga);
         let future = self.engine.push(fd, buf);
         self.rt.scheduler().insert(future).into_raw()
@@ -108,7 +106,6 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn pushto(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t, to: Endpoint) -> QToken {
-        let _s = static_span!();
         let buf = self.rt.clone_sgarray(sga);
         let future = self.engine.pushto(fd, buf, to);
         self.rt.scheduler().insert(future).into_raw()
@@ -124,7 +121,6 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn pop(&mut self, fd: FileDescriptor) -> QToken {
-        let _s = static_span!();
         let future = self.engine.pop(fd);
         self.rt.scheduler().insert(future).into_raw()
     }
@@ -172,7 +168,6 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn wait_any(&mut self, qts: &[QToken]) -> (usize, dmtr_qresult_t) {
-        let _s = static_span!();
         loop {
             self.poll_bg_work();
             for (i, &qt) in qts.iter().enumerate() {
@@ -213,7 +208,6 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     fn poll_bg_work(&mut self) {
-        let _s = static_span!();
         self.rt.scheduler().poll();
         for _ in 0..MAX_RECV_ITERS {
             let batch = self.rt.receive();
@@ -227,7 +221,6 @@ impl<RT: Runtime> LibOS<RT> {
             }
         }
         if self.ts_iters == 0 {
-            let _t = static_span!("advance_clock");
             self.rt.advance_clock(Instant::now());
         }
         self.ts_iters = (self.ts_iters + 1) % TIMER_RESOLUTION;
