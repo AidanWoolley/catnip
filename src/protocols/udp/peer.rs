@@ -320,10 +320,7 @@ impl<RT: Runtime> Future for PopFuture<RT> {
             Err(ref e) => Poll::Ready(Err(e.clone())),
             Ok(ref l) => {
                 let mut listener = l.borrow_mut();
-                match listener.buf.pop_front() {
-                    Some(r) => return Poll::Ready(Ok(r)),
-                    None => (),
-                }
+                if let Some(r) = listener.buf.pop_front() { return Poll::Ready(Ok(r)) }
                 let waker = ctx.waker();
                 listener.waker = Some(waker.clone());
                 Poll::Pending

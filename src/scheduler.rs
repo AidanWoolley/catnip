@@ -135,9 +135,7 @@ impl<F: Future<Output = ()> + Unpin> Scheduler<F> {
 
     pub fn from_raw_handle(&self, key: u64) -> Option<SchedulerHandle> {
         let inner = self.inner.borrow();
-        if inner.slab.get(key as usize).is_none() {
-            return None;
-        }
+        inner.slab.get(key as usize)?;
         let (page, _) = inner.page(key);
         let handle = SchedulerHandle {
             key: Some(key),

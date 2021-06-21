@@ -340,9 +340,9 @@ impl TcpHeader {
                             begin: Wrapping(0),
                             end: Wrapping(0),
                         }; 4];
-                        for i in 0..num_sacks {
-                            sacks[i].begin = Wrapping(option_rdr.read_u32::<NetworkEndian>()?);
-                            sacks[i].end = Wrapping(option_rdr.read_u32::<NetworkEndian>()?);
+                        for s in sacks.iter_mut().take(num_sacks) {
+                            s.begin = Wrapping(option_rdr.read_u32::<NetworkEndian>()?);
+                            s.end = Wrapping(option_rdr.read_u32::<NetworkEndian>()?);
                         }
                         TcpOptions2::SelectiveAcknowlegement { num_sacks, sacks }
                     },
