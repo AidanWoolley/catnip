@@ -73,12 +73,12 @@ impl<RT: Runtime> ReadySockets<RT> {
     fn push_ok(&mut self, cb: ControlBlock<RT>) {
         assert!(self.endpoints.insert(cb.remote));
         self.ready.push_back(Ok(cb));
-        self.waker.take().map(|w| w.wake());
+        if let Some(w) = self.waker.take() { w.wake() }
     }
 
     fn push_err(&mut self, err: Fail) {
         self.ready.push_back(Err(err));
-        self.waker.take().map(|w| w.wake());
+        if let Some(w) = self.waker.take() { w.wake() }
     }
 
     fn poll(&mut self, ctx: &mut Context) -> Poll<Result<ControlBlock<RT>, Fail>> {
