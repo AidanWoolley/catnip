@@ -311,7 +311,7 @@ impl<RT: Runtime> Peer<RT> {
         let inner = self.inner.borrow_mut();
         match inner.sockets.get(&fd) {
             Some(Socket::Established { local, remote }) => {
-                let key = (local.clone(), remote.clone());
+                let key = (*local, *remote);
                 match inner.established.get(&key) {
                     Some(ref s) => s.close()?,
                     None => {
