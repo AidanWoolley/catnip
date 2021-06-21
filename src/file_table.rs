@@ -33,8 +33,7 @@ impl FileTable {
     pub fn alloc(&self, file: File) -> FileDescriptor {
         let mut inner = self.inner.borrow_mut();
         let ix = inner.table.insert(file);
-        let file = ix as u32 + 1;
-        file
+        ix as u32 + 1
     }
 
     pub fn get(&self, fd: FileDescriptor) -> Option<File> {
