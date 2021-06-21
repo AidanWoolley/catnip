@@ -24,7 +24,7 @@ use crate::{
         Scheduler,
         SchedulerHandle,
     },
-    sync::{
+    collections::bytes::{
         Bytes,
         BytesMut,
     },

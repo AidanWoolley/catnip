@@ -6,7 +6,7 @@ use catnip::{
         ip,
         ipv4,
     },
-    sync::{
+    collections::bytes::{
         Bytes,
         BytesMut,
     },

@@ -1,10 +1,10 @@
 use crate::{
+    collections::bytes::BytesMut,
     protocols::{
         ip,
         ipv4,
     },
     runtime::Runtime,
-    sync::BytesMut,
     test_helpers,
 };
 use futures::task::noop_waker_ref;
