@@ -231,7 +231,7 @@ impl<RT: Runtime> PassiveSocket<RT> {
             local_isn,
             remote_isn,
             self.local,
-            remote.clone(),
+            remote,
             self.rt.clone(),
             self.arp.clone(),
             self.ready.clone(),
