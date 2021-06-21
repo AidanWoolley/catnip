@@ -115,7 +115,7 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
 
     fn set_result(&mut self, result: Result<ControlBlock<RT>, Fail>) {
         let mut r = self.result.borrow_mut();
-        r.waker.take().map(|w| w.wake());
+        if let Some(w) = r.waker.take() { w.wake() }
         r.result.replace(result);
     }
 
