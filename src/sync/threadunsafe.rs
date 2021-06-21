@@ -18,6 +18,12 @@ impl Clone for SharedWaker {
     }
 }
 
+impl Default for SharedWaker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SharedWaker {
     pub fn new() -> Self {
         Self(Rc::new(WakerSlot(UnsafeCell::new(None))))

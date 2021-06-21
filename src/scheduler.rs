@@ -106,6 +106,12 @@ impl<F: Future<Output = ()> + Unpin> Clone for Scheduler<F> {
     }
 }
 
+impl<F: Future<Output = ()> + Unpin> Default for Scheduler<F> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<F: Future<Output = ()> + Unpin> Scheduler<F> {
     pub fn new() -> Self {
         let inner = Inner {

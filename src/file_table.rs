@@ -17,6 +17,12 @@ pub enum File {
     UdpSocket,
 }
 
+impl Default for FileTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FileTable {
     pub fn new() -> Self {
         let inner = Inner { table: Slab::new() };
