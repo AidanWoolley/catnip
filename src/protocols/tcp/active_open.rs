@@ -181,13 +181,13 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
         // TODO(RFC1323): Clamp the scale to 14 instead of panicking.
         assert!(local_window_scale <= 14 && remote_window_scale <= 14);
 
-        let rx_window_size: u32 = (tcp_options.receive_window_size as u32)
+        let rx_window_size: u32 = (tcp_options.receive_window_size)
             .checked_shl(local_window_scale as u32)
             .expect("TODO: Window size overflow")
             .try_into()
             .expect("TODO: Window size overflow");
 
-        let tx_window_size: u32 = (header.window_size as u32)
+        let tx_window_size: u32 = (header.window_size)
             .checked_shl(remote_window_scale as u32)
             .expect("TODO: Window size overflow")
             .try_into()
