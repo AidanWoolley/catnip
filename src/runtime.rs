@@ -50,6 +50,7 @@ pub trait PacketBuf<T>: Sized {
 
 pub trait Runtime: Clone + Unpin + 'static {
     type Buf: RuntimeBuf;
+    #[allow(clippy::wrong_self_convention)]
     fn into_sgarray(&self, buf: Self::Buf) -> dmtr_sgarray_t;
     fn alloc_sgarray(&self, size: usize) -> dmtr_sgarray_t;
     fn free_sgarray(&self, sga: dmtr_sgarray_t);
