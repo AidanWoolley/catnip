@@ -81,8 +81,8 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
 
         let future = Self::background(
             local_isn,
-            local.clone(),
-            remote.clone(),
+            local,
+            remote,
             rt.clone(),
             arp.clone(),
             result.clone(),
