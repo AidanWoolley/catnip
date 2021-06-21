@@ -45,20 +45,26 @@ pub struct ArpCache {
 
 impl ArpCache {
     /// Creates an ARP Cache.
-    pub fn new(now: Instant, default_ttl: Option<Duration>, disable: bool) -> ArpCache {
-        ArpCache {
+    pub fn new(
+        now: Instant,
+        default_ttl: Option<Duration>,
+        values: Option<&HashMap<Ipv4Addr, MacAddress>>,
+        disable: bool,
+    ) -> ArpCache {
+        let mut peer = ArpCache {
             cache: HashTtlCache::new(now, default_ttl),
             waiters: HashMap::default(),
             disable,
-        }
-    }
+        };
 
-    // Import address resolutions tot he ARP cache.
-    pub fn import(&mut self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.clear();
-        for (k, v) in &cache {
-            self.insert(*k, *v);
+        // Populate cache.
+        if let Some(values) = values {
+            for (&k, &v) in values {
+                peer.insert(k, v);
+            }
         }
+
+        peer
     }
 
     // Exports address resolutions that are stored in the ARP cache.

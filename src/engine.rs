@@ -58,7 +58,7 @@ impl<RT: Runtime> Engine<RT> {
     pub fn new(rt: RT) -> Result<Self, Fail> {
         let now = rt.now();
         let file_table = FileTable::new();
-        let arp = arp::Peer::new(now, rt.clone())?;
+        let arp = arp::Peer::new(now, rt.clone(), rt.arp_options())?;
         let ipv4 = ipv4::Peer::new(rt.clone(), arp.clone(), file_table.clone());
         Ok(Engine {
             rt,
@@ -255,10 +255,5 @@ impl<RT: Runtime> Engine<RT> {
     #[cfg(test)]
     pub fn export_arp_cache(&self) -> HashMap<Ipv4Addr, MacAddress> {
         self.arp.export_cache()
-    }
-
-    #[cfg(test)]
-    pub fn import_arp_cache(&self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.arp.import_cache(cache)
     }
 }

@@ -1,38 +1,30 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use std::marker::PhantomData;
 use super::{
     cache::ArpCache,
-    pdu::{
-        ArpMessage,
-        ArpOperation,
-        ArpPdu,
-    },
+    msg::ArpMessage,
+    options::ArpOptions,
+    pdu::{ArpOperation, ArpPdu},
 };
 use crate::{
     fail::Fail,
     protocols::ethernet2::{
-        frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        frame::{EtherType2, Ethernet2Header},
         MacAddress,
     },
     runtime::Runtime,
     scheduler::SchedulerHandle,
 };
 use futures::FutureExt;
-use std::collections::HashMap;
 use std::{
     cell::RefCell,
+    collections::HashMap,
     future::Future,
+    marker::PhantomData,
     net::Ipv4Addr,
     rc::Rc,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 #[derive(Clone)]
@@ -41,38 +33,38 @@ pub struct ArpPeer<RT: Runtime> {
     // TODO: Move this to a strong owner that gets polled once.
     cache: Rc<RefCell<ArpCache>>,
     background: Rc<SchedulerHandle>,
+    options: ArpOptions,
 }
 
 impl<RT: Runtime> ArpPeer<RT> {
-    pub fn new(now: Instant, rt: RT) -> Result<ArpPeer<RT>, Fail> {
-        let options = rt.arp_options();
+    pub fn new(now: Instant, rt: RT, options: ArpOptions) -> Result<ArpPeer<RT>, Fail> {
         let cache = Rc::new(RefCell::new(ArpCache::new(
             now,
             Some(options.cache_ttl),
+            Some(&options.initial_values),
             options.disable_arp,
         )));
+
         let handle = rt.spawn(Self::background(rt.clone(), cache.clone()));
         let peer = ArpPeer {
             rt,
             cache,
             background: Rc::new(handle),
+            options,
         };
-        for (&link_addr, &ipv4_addr) in &options.initial_values {
-            peer.insert(ipv4_addr, link_addr);
-        }
+
         Ok(peer)
     }
 
+    /// Background task that cleans up the ARP cache from time to time.
     async fn background(rt: RT, cache: Rc<RefCell<ArpCache>>) {
         loop {
             let current_time = rt.now();
             {
                 let mut cache = cache.borrow_mut();
                 cache.advance_clock(current_time);
-                // TODO: Reenable this when we fix the cache datastructure.
-                // cache.try_evict(2);
+                cache.clear();
             }
-            // TODO: Make this more precise.
             rt.wait(Duration::from_secs(1)).await;
         }
     }
@@ -146,7 +138,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                 debug!("Responding {:?}", reply);
                 self.rt.transmit(reply);
                 Ok(())
-            },
+            }
             ArpOperation::Reply => {
                 debug!(
                     "reply from `{}/{}`",
@@ -156,7 +148,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                     .borrow_mut()
                     .insert(pdu.sender_protocol_addr, pdu.sender_hardware_addr);
                 Ok(())
-            },
+            }
         }
     }
 
@@ -167,6 +159,7 @@ impl<RT: Runtime> ArpPeer<RT> {
     pub fn query(&self, ipv4_addr: Ipv4Addr) -> impl Future<Output = Result<MacAddress, Fail>> {
         let rt = self.rt.clone();
         let cache = self.cache.clone();
+        let arp_options = self.options.clone();
         async move {
             if let Some(&link_addr) = cache.borrow().get_link_addr(ipv4_addr) {
                 return Ok(link_addr);
@@ -192,7 +185,6 @@ impl<RT: Runtime> ArpPeer<RT> {
             // from TCP/IP illustrated, chapter 4:
             // > The frequency of the ARP request is very close to one per
             // > second, the maximum suggested by [RFC1122].
-            let arp_options = rt.arp_options();
 
             for i in 0..arp_options.retry_count + 1 {
                 rt.transmit(msg.clone());
@@ -212,13 +204,5 @@ impl<RT: Runtime> ArpPeer<RT> {
 
     pub fn export_cache(&self) -> HashMap<Ipv4Addr, MacAddress> {
         self.cache.borrow().export()
-    }
-
-    pub fn import_cache(&self, cache: HashMap<Ipv4Addr, MacAddress>) {
-        self.cache.borrow_mut().import(cache);
-    }
-
-    pub fn insert(&self, ipv4_addr: Ipv4Addr, link_addr: MacAddress) {
-        self.cache.borrow_mut().insert(ipv4_addr, link_addr);
     }
 }

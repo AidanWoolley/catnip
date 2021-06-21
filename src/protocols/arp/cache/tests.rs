@@ -12,7 +12,7 @@ fn evit_with_default_ttl() {
     let later = now + ttl;
 
     // Insert an IPv4 address in the ARP Cache.
-    let mut cache = ArpCache::new(now, Some(ttl), false);
+    let mut cache = ArpCache::new(now, Some(ttl), None, false);
     cache.insert(test_helpers::ALICE_IPV4, test_helpers::ALICE_MAC);
     assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
 
@@ -35,8 +35,7 @@ fn import() {
     map.insert(test_helpers::ALICE_IPV4, test_helpers::ALICE_MAC);
 
     // Create an ARP Cache and import address resolution map.
-    let mut cache = ArpCache::new(now, Some(ttl), false);
-    cache.import(map);
+    let cache = ArpCache::new(now, Some(ttl), Some(&map), false);
 
     // Check if address resolutions are in the ARP Cache.
     assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
@@ -49,7 +48,7 @@ fn export() {
     let ttl = Duration::from_secs(1);
 
     // Insert an IPv4 address in the ARP Cache.
-    let mut cache = ArpCache::new(now, Some(ttl), false);
+    let mut cache = ArpCache::new(now, Some(ttl), None, false);
     cache.insert(test_helpers::ALICE_IPV4, test_helpers::ALICE_MAC);
     assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
 

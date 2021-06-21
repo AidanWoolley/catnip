@@ -4,6 +4,7 @@
 mod cache;
 mod options;
 mod pdu;
+mod msg;
 mod peer;
 
 #[cfg(test)]
