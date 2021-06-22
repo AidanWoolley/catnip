@@ -6,14 +6,8 @@ mod tests;
 
 use crate::{collections::HashTtlCache, protocols::ethernet2::MacAddress};
 
-use futures::{
-    channel::oneshot::{channel, Receiver, Sender},
-    FutureExt,
-};
-
 use std::{
     collections::HashMap,
-    future::Future,
     net::Ipv4Addr,
     time::{Duration, Instant},
 };
@@ -36,9 +30,6 @@ pub struct ArpCache {
     /// Cache for IPv4 Addresses
     cache: HashTtlCache<Ipv4Addr, Record>,
 
-    /// Peers waiting for address resolution.
-    waiters: HashMap<Ipv4Addr, Sender<MacAddress>>,
-
     /// Disable ARP?
     disable: bool,
 }
@@ -53,7 +44,6 @@ impl ArpCache {
     ) -> ArpCache {
         let mut peer = ArpCache {
             cache: HashTtlCache::new(now, default_ttl),
-            waiters: HashMap::default(),
             disable,
         };
 
@@ -82,36 +72,16 @@ impl ArpCache {
             link_addr,
             ipv4_addr,
         };
-        if let Some(sender) = self.waiters.remove(&ipv4_addr) {
-            let _ = sender.send(link_addr);
-        }
         self.cache.insert(ipv4_addr, record).map(|r| r.link_addr)
     }
 
     /// Gets the MAC address of given IPv4 address.
-    pub fn get_link_addr(&self, ipv4_addr: Ipv4Addr) -> Option<&MacAddress> {
+    pub fn get(&self, ipv4_addr: Ipv4Addr) -> Option<&MacAddress> {
         if self.disable {
             Some(&DUMMY_MAC_ADDRESS)
         } else {
             self.cache.get(&ipv4_addr).map(|r| &r.link_addr)
         }
-    }
-
-    /// Waits for link address.
-    pub fn wait_link_addr(&mut self, ipv4_addr: Ipv4Addr) -> impl Future<Output = MacAddress> {
-        let (tx, rx): (Sender<MacAddress>, Receiver<MacAddress>) = channel();
-        if self.disable {
-            let _ = tx.send(DUMMY_MAC_ADDRESS);
-        } else if let Some(r) = self.cache.get(&ipv4_addr) {
-            let _ = tx.send(r.link_addr);
-        } else {
-            assert!(
-                self.waiters.insert(ipv4_addr, tx).is_none(),
-                "Duplicate waiter for {:?}",
-                ipv4_addr
-            );
-        }
-        rx.map(|r| r.expect("Dropped waiter?"))
     }
 
     /// Advances internal clock of the ARP Cache.

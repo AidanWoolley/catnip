@@ -14,14 +14,14 @@ fn evit_with_default_ttl() {
     // Insert an IPv4 address in the ARP Cache.
     let mut cache = ArpCache::new(now, Some(ttl), None, false);
     cache.insert(test_helpers::ALICE_IPV4, test_helpers::ALICE_MAC);
-    assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
+    assert!(cache.get(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
 
     // Advance the internal clock of the cache and clear it.
     cache.advance_clock(later);
     cache.clear();
 
     // The IPv4 address must be gone.
-    assert!(cache.get_link_addr(test_helpers::ALICE_IPV4).is_none());
+    assert!(cache.get(test_helpers::ALICE_IPV4).is_none());
 }
 
 /// Tests import on the ARP Cache.
@@ -38,7 +38,7 @@ fn import() {
     let cache = ArpCache::new(now, Some(ttl), Some(&map), false);
 
     // Check if address resolutions are in the ARP Cache.
-    assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
+    assert!(cache.get(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
 }
 
 /// Tests export on the ARP Cache.
@@ -50,7 +50,7 @@ fn export() {
     // Insert an IPv4 address in the ARP Cache.
     let mut cache = ArpCache::new(now, Some(ttl), None, false);
     cache.insert(test_helpers::ALICE_IPV4, test_helpers::ALICE_MAC);
-    assert!(cache.get_link_addr(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
+    assert!(cache.get(test_helpers::ALICE_IPV4) == Some(&test_helpers::ALICE_MAC));
 
     // Export address resolution map.
     let map: HashMap<Ipv4Addr, MacAddress> = cache.export();
