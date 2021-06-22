@@ -79,10 +79,13 @@ impl TestRuntime {
         link_addr: MacAddress,
         ipv4_addr: Ipv4Addr,
     ) -> Self {
-        let mut arp_options = arp::Options::default();
-        arp_options.retry_count = 2;
-        arp_options.cache_ttl = Duration::from_secs(600);
-        arp_options.request_timeout = Duration::from_secs(1);
+        let arp_options = arp::Options::new(
+            Duration::from_secs(600),
+            Duration::from_secs(1),
+            2,
+            HashMap::new(),
+            false,
+        );
 
         let mut tcp_options = tcp::Options::default();
         tcp_options.advertised_mss = 2048;
