@@ -16,7 +16,6 @@ use crate::{
     runtime::Runtime,
     sync::SharedWaker,
 };
-use gen_iter::gen_iter;
 use std::{
     cell::RefCell,
     future::Future,
@@ -28,6 +27,8 @@ use std::{
         Waker,
     },
 };
+
+use bit_iter::*;
 use unicycle::pin_slab::PinSlab;
 
 pub enum Operation<RT: Runtime> {
@@ -55,18 +56,6 @@ impl<T: Into<TcpOperation<RT>>, RT: Runtime> From<T> for Operation<RT> {
     fn from(f: T) -> Self {
         Operation::Tcp(f.into())
     }
-}
-
-// Adapted from https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-fn iter_set_bits(mut bitset: u64) -> impl Iterator<Item = usize> {
-    gen_iter!({
-        while bitset != 0 {
-            // `bitset & -bitset` returns a bitset with only the lowest significant bit set
-            let t = bitset & bitset.wrapping_neg();
-            yield bitset.trailing_zeros() as usize;
-            bitset ^= t;
-        }
-    })
 }
 
 pub struct SchedulerHandle {
@@ -163,31 +152,35 @@ impl<F: Future<Output = ()> + Unpin> Scheduler<F> {
                 (page.take_notified(), page.take_dropped())
             };
             if notified != 0 {
-                for subpage_ix in iter_set_bits(notified) {
-                    let ix = page_ix * WAKER_PAGE_SIZE + subpage_ix;
-                    let waker =
-                        unsafe { Waker::from_raw(inner.pages[page_ix].raw_waker(subpage_ix)) };
-                    let mut sub_ctx = Context::from_waker(&waker);
+                for subpage_ix in BitIter::from(notified) {
+                    if subpage_ix != 0 {
+                        let ix = page_ix * WAKER_PAGE_SIZE + subpage_ix;
+                        let waker =
+                            unsafe { Waker::from_raw(inner.pages[page_ix].raw_waker(subpage_ix)) };
+                        let mut sub_ctx = Context::from_waker(&waker);
 
-                    let pinned_ref = inner.slab.get_pin_mut(ix).unwrap();
-                    let pinned_ptr = unsafe { Pin::into_inner_unchecked(pinned_ref) as *mut _ };
+                        let pinned_ref = inner.slab.get_pin_mut(ix).unwrap();
+                        let pinned_ptr = unsafe { Pin::into_inner_unchecked(pinned_ref) as *mut _ };
 
-                    drop(inner);
-                    let pinned_ref = unsafe { Pin::new_unchecked(&mut *pinned_ptr) };
-                    let poll_result = { Future::poll(pinned_ref, &mut sub_ctx) };
-                    inner = self.inner.borrow_mut();
+                        drop(inner);
+                        let pinned_ref = unsafe { Pin::new_unchecked(&mut *pinned_ptr) };
+                        let poll_result = { Future::poll(pinned_ref, &mut sub_ctx) };
+                        inner = self.inner.borrow_mut();
 
-                    match poll_result {
-                        Poll::Ready(()) => inner.pages[page_ix].mark_completed(subpage_ix),
-                        Poll::Pending => (),
+                        match poll_result {
+                            Poll::Ready(()) => inner.pages[page_ix].mark_completed(subpage_ix),
+                            Poll::Pending => (),
+                        }
                     }
                 }
             }
             if dropped != 0 {
-                for subpage_ix in iter_set_bits(dropped) {
-                    let ix = page_ix * WAKER_PAGE_SIZE + subpage_ix;
-                    inner.slab.remove(ix);
-                    inner.pages[page_ix].clear(subpage_ix);
+                for subpage_ix in BitIter::from(dropped) {
+                    if subpage_ix != 0 {
+                        let ix = page_ix * WAKER_PAGE_SIZE + subpage_ix;
+                        inner.slab.remove(ix);
+                        inner.pages[page_ix].clear(subpage_ix);
+                    }
                 }
             }
         }
