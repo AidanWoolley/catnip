@@ -47,6 +47,16 @@ pub struct Ethernet2Header {
 }
 
 impl Ethernet2Header {
+    /// Creates a header for an Ethernet frame.
+    pub fn new(dst_addr: MacAddress, src_addr: MacAddress, ether_type: EtherType2) -> Self {
+        Self{
+            dst_addr,
+            src_addr,
+            ether_type,
+        }
+    }
+
+
     pub fn compute_size(&self) -> usize {
         ETHERNET2_HEADER_SIZE
     }
