@@ -25,7 +25,6 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     future::Future,
-    marker::PhantomData,
     net::Ipv4Addr,
     rc::Rc,
     time::{Duration, Instant},
@@ -148,8 +147,8 @@ impl<RT: Runtime> ArpPeer<RT> {
                 // from RFC 826:
                 // > Swap hardware and protocol fields, putting the local
                 // > hardware and protocol addresses in the sender fields.
-                let reply = ArpMessage {
-                    ethernet2_hdr: Ethernet2Header {
+                let reply = ArpMessage::new(
+                    Ethernet2Header {
                         dst_addr: pdu.sender_hardware_addr,
                         src_addr: self.rt.local_link_addr(),
                         ether_type: EtherType2::Arp,
@@ -161,7 +160,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                         pdu.sender_hardware_addr,
                         pdu.sender_protocol_addr,
                     ),
-                };
+                );
                 debug!("Responding {:?}", reply);
                 self.rt.transmit(reply);
                 Ok(())
@@ -192,8 +191,8 @@ impl<RT: Runtime> ArpPeer<RT> {
             if let Some(&link_addr) = cache.borrow().get(ipv4_addr) {
                 return Ok(link_addr);
             }
-            let msg = ArpMessage {
-                ethernet2_hdr: Ethernet2Header {
+            let msg = ArpMessage::new(
+                Ethernet2Header {
                     dst_addr: MacAddress::broadcast(),
                     src_addr: rt.local_link_addr(),
                     ether_type: EtherType2::Arp,
@@ -205,7 +204,7 @@ impl<RT: Runtime> ArpPeer<RT> {
                     MacAddress::broadcast(),
                     ipv4_addr,
                 ),
-            };
+            );
             let mut arp_response = arp.do_wait_link_addr(ipv4_addr).fuse();
 
             // from TCP/IP illustrated, chapter 4:
