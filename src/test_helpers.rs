@@ -4,6 +4,7 @@
 use arrayvec::ArrayVec;
 use std::slice;
 use std::ptr;
+use std::collections::HashMap;
 use std::mem;
 use crate::interop::{dmtr_sgarray_t, dmtr_sgaseg_t};
 use crate::{
@@ -87,9 +88,9 @@ impl TestRuntime {
             false,
         );
 
-        let mut tcp_options = tcp::Options::default();
-        tcp_options.advertised_mss = 2048;
-        tcp_options.window_scale = 2;
+        let tcp_options = tcp::Options::default();
+        let tcp_options = tcp_options.advertised_mss(2048);
+        let tcp_options = tcp_options.window_scale(2);
 
         let inner = Inner {
             name,

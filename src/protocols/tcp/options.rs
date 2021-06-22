@@ -44,6 +44,11 @@ impl TcpOptions {
         self
     }
 
+    pub fn window_scale(mut self, value: u8) -> Self {
+        self.window_scale = value;
+        self
+    }
+
     pub fn handshake_retries(mut self, value: usize) -> Self {
         assert!(value > 0);
         self.handshake_retries = value;
