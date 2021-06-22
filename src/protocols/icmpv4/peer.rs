@@ -1,53 +1,30 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use std::marker::PhantomData;
-use super::datagram::{
-    Icmpv4Header,
-    Icmpv4Type2,
-};
+use super::datagram::{Icmpv4Header, Icmpv4Type2};
 use crate::{
     fail::Fail,
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         icmpv4::datagram::Icmpv4Message,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
     },
     runtime::Runtime,
     scheduler::SchedulerHandle,
 };
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-};
-use futures::{
-    FutureExt,
-    StreamExt,
-};
+use byteorder::{ByteOrder, NetworkEndian};
+use futures::{FutureExt, StreamExt};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 use std::{
-    cell::RefCell,
-    future::Future,
-    net::Ipv4Addr,
-    num::Wrapping,
-    process,
-    rc::Rc,
-    time::Duration,
+    cell::RefCell, future::Future, net::Ipv4Addr, num::Wrapping, process, rc::Rc, time::Duration,
 };
 // TODO: Use unsync channel
+use crate::futures_utility::UtilityMethods;
 use futures::channel::{
     mpsc,
-    oneshot::{
-        channel,
-        Sender,
-    },
+    oneshot::{channel, Sender},
 };
 
 pub struct Icmpv4Peer<RT: Runtime> {
@@ -135,16 +112,16 @@ impl<RT: Runtime> Icmpv4Peer<RT> {
         match icmpv4_hdr.icmpv4_type {
             Icmpv4Type2::EchoRequest { id, seq_num } => {
                 self.reply_to_ping(ipv4_header.src_addr, id, seq_num);
-            },
+            }
             Icmpv4Type2::EchoReply { id, seq_num } => {
                 let mut inner = self.inner.borrow_mut();
                 if let Some(tx) = inner.requests.remove(&(id, seq_num)) {
                     let _ = tx.send(());
                 }
-            },
+            }
             _ => {
                 warn!("Unsupported ICMPv4 message: {:?}", icmpv4_hdr);
-            },
+            }
         }
         Ok(())
     }
@@ -217,10 +194,9 @@ impl<RT: Runtime> Icmpv4Peer<RT> {
                 rx
             };
             // TODO: Handle cancellation here and unregister the completion in `requests`.
-            futures::select! {
-                _ = rx.fuse() => Ok(rt.now() - t0),
-                _ = rt.wait(timeout).fuse() => Err(Fail::Timeout {}),
-            }
+            let timer = rt.wait(timeout);
+            let _ = rx.fuse().with_timeout(timer).await?;
+            Ok(rt.now() - t0)
         }
     }
 

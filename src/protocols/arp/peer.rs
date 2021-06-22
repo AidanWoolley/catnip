@@ -7,6 +7,7 @@ use super::{
     options::ArpOptions,
     pdu::{ArpOperation, ArpPdu},
 };
+use crate::futures_utility::UtilityMethods;
 use crate::{
     fail::Fail,
     protocols::ethernet2::{
@@ -179,23 +180,23 @@ impl<RT: Runtime> ArpPeer<RT> {
                 },
                 _body_marker: PhantomData,
             };
-            let arp_response = cache.borrow_mut().wait_link_addr(ipv4_addr).fuse();
-            futures::pin_mut!(arp_response);
+            let mut arp_response = cache.borrow_mut().wait_link_addr(ipv4_addr).fuse();
 
             // from TCP/IP illustrated, chapter 4:
             // > The frequency of the ARP request is very close to one per
             // > second, the maximum suggested by [RFC1122].
-
             for i in 0..arp_options.retry_count + 1 {
                 rt.transmit(msg.clone());
-                futures::select! {
-                    link_addr = arp_response => {
+                let timer = rt.wait(arp_options.request_timeout);
+
+                match arp_response.with_timeout(timer).await {
+                    Ok(link_addr) => {
                         debug!("ARP result available ({})", link_addr);
                         return Ok(link_addr);
-                    },
-                    _ = rt.wait(arp_options.request_timeout).fuse() => {
+                    }
+                    Err(_) => {
                         warn!("ARP request timeout; attempt {}.", i + 1);
-                    },
+                    }
                 }
             }
             Err(Fail::Timeout {})
