@@ -58,7 +58,7 @@ pub trait Runtime: Clone + Unpin + 'static {
 
     fn advance_clock(&self, now: Instant);
     fn transmit(&self, pkt: impl PacketBuf<Self::Buf>);
-    fn receive(&self) -> ArrayVec<[Self::Buf; RECEIVE_BATCH_SIZE]>;
+    fn receive(&self) -> ArrayVec<Self::Buf, RECEIVE_BATCH_SIZE>;
 
     fn local_link_addr(&self) -> MacAddress;
     fn local_ipv4_addr(&self) -> Ipv4Addr;

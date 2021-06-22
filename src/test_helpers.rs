@@ -209,7 +209,7 @@ impl Runtime for TestRuntime {
         self.inner.borrow_mut().outgoing.push_back(buf.freeze());
     }
 
-    fn receive(&self) -> ArrayVec<[Bytes; RECEIVE_BATCH_SIZE]> {
+    fn receive(&self) -> ArrayVec<Bytes, RECEIVE_BATCH_SIZE> {
         let mut out = ArrayVec::new();
         if let Some(buf) = self.inner.borrow_mut().incoming.pop_front() {
             out.push(buf);

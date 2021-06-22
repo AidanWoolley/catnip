@@ -205,7 +205,7 @@ impl Runtime for TestRuntime {
             .unwrap();
     }
 
-    fn receive(&self) -> ArrayVec<[Bytes; RECEIVE_BATCH_SIZE]> {
+    fn receive(&self) -> ArrayVec<Bytes, RECEIVE_BATCH_SIZE> {
         let mut out = ArrayVec::new();
         if let Some(buf) = self.inner.borrow_mut().incoming.try_recv().ok() {
             out.push(buf);
