@@ -37,6 +37,23 @@ pub struct ArpPdu {
 }
 
 impl ArpPdu {
+    /// Creates an ARP protocol data unit.
+    pub fn new(
+        op: ArpOperation,
+        local_link_addr: MacAddress,
+        local_ipv4_addr: Ipv4Addr,
+        remote_link_addr: MacAddress,
+        remote_ipv4_addr: Ipv4Addr,
+    ) -> Self {
+        Self {
+            operation: op,
+            sender_hardware_addr: local_link_addr,
+            sender_protocol_addr: local_ipv4_addr,
+            target_hardware_addr: remote_link_addr,
+            target_protocol_addr: remote_ipv4_addr,
+        }
+    }
+
     /// Computes the size of the target ARP PDU.
     pub fn compute_size(&self) -> usize {
         ARP_MESSAGE_SIZE

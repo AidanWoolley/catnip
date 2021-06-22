@@ -154,14 +154,13 @@ impl<RT: Runtime> ArpPeer<RT> {
                         src_addr: self.rt.local_link_addr(),
                         ether_type: EtherType2::Arp,
                     },
-                    arp_pdu: ArpPdu {
-                        operation: ArpOperation::Reply,
-                        sender_hardware_addr: self.rt.local_link_addr(),
-                        sender_protocol_addr: self.rt.local_ipv4_addr(),
-                        target_hardware_addr: pdu.sender_hardware_addr,
-                        target_protocol_addr: pdu.sender_protocol_addr,
-                    },
-                    _body_marker: PhantomData,
+                    ArpPdu::new(
+                        ArpOperation::Reply,
+                        self.rt.local_link_addr(),
+                        self.rt.local_ipv4_addr(),
+                        pdu.sender_hardware_addr,
+                        pdu.sender_protocol_addr,
+                    ),
                 };
                 debug!("Responding {:?}", reply);
                 self.rt.transmit(reply);
@@ -199,14 +198,13 @@ impl<RT: Runtime> ArpPeer<RT> {
                     src_addr: rt.local_link_addr(),
                     ether_type: EtherType2::Arp,
                 },
-                arp_pdu: ArpPdu {
-                    operation: ArpOperation::Request,
-                    sender_hardware_addr: rt.local_link_addr(),
-                    sender_protocol_addr: rt.local_ipv4_addr(),
-                    target_hardware_addr: MacAddress::broadcast(),
-                    target_protocol_addr: ipv4_addr,
-                },
-                _body_marker: PhantomData,
+                ArpPdu::new(
+                    ArpOperation::Request,
+                    rt.local_link_addr(),
+                    rt.local_ipv4_addr(),
+                    MacAddress::broadcast(),
+                    ipv4_addr,
+                ),
             };
             let mut arp_response = arp.do_wait_link_addr(ipv4_addr).fuse();
 
