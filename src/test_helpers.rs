@@ -91,7 +91,7 @@ impl TestRuntime {
         let inner = Inner {
             name,
             timer: TimerRc(Rc::new(Timer::new(now))),
-            rng: SmallRng::from_seed([0; 16]),
+            rng: SmallRng::from_seed([0; 32]),
             incoming: VecDeque::new(),
             outgoing: VecDeque::new(),
             link_addr,

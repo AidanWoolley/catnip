@@ -96,7 +96,7 @@ impl TestRuntime {
 
         let inner = Inner {
             timer: TimerRc(Rc::new(Timer::new(now))),
-            rng: SmallRng::from_seed([0; 16]),
+            rng: SmallRng::from_seed([0; 32]),
             incoming,
             outgoing,
             link_addr,
