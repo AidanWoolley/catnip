@@ -64,7 +64,8 @@ impl<RT: Runtime> ArpPeer<RT> {
             {
                 let mut cache = cache.borrow_mut();
                 cache.advance_clock(current_time);
-                cache.clear();
+                // TODO: re-enable eviction once TCP/IP stack is fully functional.
+                // cache.clear();
             }
             rt.wait(Duration::from_secs(1)).await;
         }
