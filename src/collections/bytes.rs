@@ -14,12 +14,21 @@ use std::{
 //==============================================================================
 
 /// Non-Mutable Buffer
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Default)]
 pub struct Bytes {
     buf: Option<Arc<[u8]>>,
     offset: usize,
     len: usize,
 }
+
+/// Equality of Bytes only depends on the data values and not in the offset of the buffer.
+impl PartialEq for Bytes {
+    fn eq(&self, rhs: &Self) -> bool {
+        &self[..] == &rhs[..]
+    }
+}
+
+impl Eq for Bytes {}
 
 /// Runtime implementation for non-mutable buffers.
 impl RuntimeBuf for Bytes {
@@ -72,10 +81,18 @@ impl Deref for Bytes {
 // BytesMut
 //==============================================================================
 
-#[derive(PartialEq)]
 pub struct BytesMut {
     buf: Arc<[u8]>,
 }
+
+/// Equality of BytesMut only depends on the data values and not in the offset of the buffer.
+impl PartialEq for BytesMut {
+    fn eq(&self, rhs: &Self) -> bool {
+        &self[..] == &rhs[..]
+    }
+}
+
+impl Eq for BytesMut {}
 
 /// Mutable Buffer
 impl BytesMut {
