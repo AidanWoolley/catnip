@@ -11,7 +11,7 @@
 #![feature(never_type)]
 #![feature(raw)]
 #![feature(try_blocks)]
-#![warn(clippy::all)]
+#![deny(clippy::all)]
 #![recursion_limit = "512"]
 #![feature(test)]
 #![feature(min_type_alias_impl_trait)]

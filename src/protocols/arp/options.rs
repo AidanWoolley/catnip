@@ -31,6 +31,22 @@ impl Default for ArpOptions {
 }
 
 impl ArpOptions {
+    pub fn new(
+        cache_ttl: Duration,
+        request_timeout: Duration,
+        retry_count: usize,
+        initial_values: HashMap<Ipv4Addr, MacAddress>,
+        disable_arp: bool,
+    ) -> Self {
+        ArpOptions {
+            cache_ttl,
+            request_timeout,
+            retry_count,
+            initial_values,
+            disable_arp,
+        }
+    }
+
     pub fn cache_ttl(mut self, value: Duration) -> Self {
         assert!(value > Duration::new(0, 0));
         self.cache_ttl = value;

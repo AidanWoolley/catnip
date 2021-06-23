@@ -4,6 +4,7 @@
 use arrayvec::ArrayVec;
 use std::slice;
 use std::ptr;
+use std::collections::HashMap;
 use std::mem;
 use crate::interop::{dmtr_sgarray_t, dmtr_sgaseg_t};
 use crate::{
@@ -79,14 +80,17 @@ impl TestRuntime {
         link_addr: MacAddress,
         ipv4_addr: Ipv4Addr,
     ) -> Self {
-        let mut arp_options = arp::Options::default();
-        arp_options.retry_count = 2;
-        arp_options.cache_ttl = Duration::from_secs(600);
-        arp_options.request_timeout = Duration::from_secs(1);
+        let arp_options = arp::Options::new(
+            Duration::from_secs(600),
+            Duration::from_secs(1),
+            2,
+            HashMap::new(),
+            false,
+        );
 
-        let mut tcp_options = tcp::Options::default();
-        tcp_options.advertised_mss = 2048;
-        tcp_options.window_scale = 2;
+        let tcp_options = tcp::Options::default();
+        let tcp_options = tcp_options.advertised_mss(2048);
+        let tcp_options = tcp_options.window_scale(2);
 
         let inner = Inner {
             name,
