@@ -24,7 +24,7 @@ pub struct Bytes {
 /// Equality of Bytes only depends on the data values and not in the offset of the buffer.
 impl PartialEq for Bytes {
     fn eq(&self, rhs: &Self) -> bool {
-        &self[..] == &rhs[..]
+        self[..] == rhs[..]
     }
 }
 
@@ -88,7 +88,7 @@ pub struct BytesMut {
 /// Equality of BytesMut only depends on the data values and not in the offset of the buffer.
 impl PartialEq for BytesMut {
     fn eq(&self, rhs: &Self) -> bool {
-        &self[..] == &rhs[..]
+        self[..] == rhs[..]
     }
 }
 
