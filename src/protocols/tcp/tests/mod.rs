@@ -28,8 +28,8 @@ fn test_connect() {
     let mut ctx = Context::from_waker(noop_waker_ref());
     let mut now = Instant::now();
 
-    let mut alice = test_helpers::new_alice(now);
-    let mut bob = test_helpers::new_bob(now);
+    let mut alice = test_helpers::new_alice2(now);
+    let mut bob = test_helpers::new_bob2(now);
 
     // Establish the connection between the two peers.
     let listen_port = ip::Port::try_from(80).unwrap();

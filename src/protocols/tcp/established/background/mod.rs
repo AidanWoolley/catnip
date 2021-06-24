@@ -31,7 +31,7 @@ pub type BackgroundFuture<RT> = impl Future<Output = ()>;
 pub fn background<RT: Runtime>(
     cb: Rc<ControlBlock<RT>>,
     fd: FileDescriptor,
-    dead_socket_tx: mpsc::UnboundedSender<FileDescriptor>,
+    _dead_socket_tx: mpsc::UnboundedSender<FileDescriptor>,
 ) -> BackgroundFuture<RT> {
     async move {
         let acknowledger = acknowledger(cb.clone()).fuse();
@@ -53,8 +53,10 @@ pub fn background<RT: Runtime>(
             r = closer => r,
         };
         error!("Connection (fd {}) terminated: {:?}", fd, r);
-        dead_socket_tx
-            .unbounded_send(fd)
-            .expect("Failed to terminate connection");
+
+        // TODO Properly clean up Peer state for this connection.
+        // dead_socket_tx
+        //     .unbounded_send(fd)
+        //     .expect("Failed to terminate connection");
     }
 }

@@ -296,6 +296,26 @@ pub fn new_bob(now: Instant) -> Engine<TestRuntime> {
     Engine::new(rt).unwrap()
 }
 
+pub fn new_alice2(now: Instant) -> Engine<TestRuntime> {
+    let rt = TestRuntime::new("alice", now, ALICE_MAC, ALICE_IPV4);
+    {
+        let arp_options: &mut _ = &mut rt.inner.borrow_mut().arp_options;
+        arp_options.initial_values.insert(ALICE_IPV4, ALICE_MAC);
+        arp_options.initial_values.insert(BOB_IPV4, BOB_MAC);
+    }
+    Engine::new(rt).unwrap()
+}
+
+pub fn new_bob2(now: Instant) -> Engine<TestRuntime> {
+    let rt = TestRuntime::new("bob", now, BOB_MAC, BOB_IPV4);
+    {
+        let arp_options: &mut _ = &mut rt.inner.borrow_mut().arp_options;
+        arp_options.initial_values.insert(BOB_IPV4, BOB_MAC);
+        arp_options.initial_values.insert(ALICE_IPV4, ALICE_MAC);
+    }
+    Engine::new(rt).unwrap()
+}
+
 pub fn new_carrie(now: Instant) -> Engine<TestRuntime> {
     let rt = TestRuntime::new("carrie", now, CARRIE_MAC, CARRIE_IPV4);
     Engine::new(rt).unwrap()
