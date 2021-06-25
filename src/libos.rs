@@ -72,28 +72,95 @@ impl<RT: Runtime> LibOS<RT> {
         Ok(self.engine.socket(engine_protocol))
     }
 
-    pub fn bind(&mut self, fd: FileDescriptor, endpoint: Endpoint) -> Result<(), Fail> {
-        trace!("bind(): fd={:?} endpoint={:?}", fd, endpoint);
-        self.engine.bind(fd, endpoint)
+    ///
+    /// **Brief**
+    ///
+    /// Binds the socket referred to by `fd` to the local endpoint specified by
+    /// `local`.
+    ///
+    /// **Return Value**
+    ///
+    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// returned instead.
+    ///
+    pub fn bind(&mut self, fd: FileDescriptor, local: Endpoint) -> Result<(), Fail> {
+        trace!("bind(): fd={:?} local={:?}", fd, local);
+        self.engine.bind(fd, local)
     }
 
+    ///
+    /// **Brief**
+    ///
+    /// Marks the socket referred to by `fd` as a socket that will be used to
+    /// accept incoming connection requests using [accept]. The `fd` should
+    /// refer to a socket of type `SOCK_STREAM`. The `backlog` argument defines
+    /// the maximum length to which the queue of pending connections for `fd`
+    /// may grow. If a connection request arrives when the queue is full, the
+    /// client may receive an error with an indication that the connection was
+    /// refused.
+    ///
+    /// **Return Value**
+    ///
+    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// returned instead.
+    ///
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
         trace!{"listen(): fd={:?} backlog={:?}", fd, backlog}
         self.engine.listen(fd, backlog)
     }
 
+    ///
+    /// **Brief**
+    ///
+    /// Accepts an incoming connection request on the queue of pending
+    /// connections for the listening socket referred to by `fd`.
+    ///
+    /// **Return Value**
+    ///
+    /// Upon successful completion, a queue token is returned. This token can be
+    /// used to wait for a connection request to arrive.
+    ///
+    ///  **Notes**
+    ///
+    /// -TODO: Fail if connection cannot be established.
+    ///
     pub fn accept(&mut self, fd: FileDescriptor) -> QToken {
         trace!("accept(): {:?}", fd);
         let future = self.engine.accept(fd);
         self.rt.scheduler().insert(future).into_raw()
     }
 
+    ///
+    /// **Brief**
+    ///
+    /// Connects the socket referred to by `fd` to the remote endpoint specified by `remote`.
+    ///
+    /// **Return Value**
+    ///
+    /// Upon successful completion, a queue token is returned. This token can be
+    /// used to push and pop data to/from the queue that connects the local and
+    /// remote endpoints.
+    ///
+    ///  **Notes**
+    ///
+    /// -TODO: Fail if connection cannot be established.
+    ///
     pub fn connect(&mut self, fd: FileDescriptor, remote: Endpoint) -> QToken {
         trace!("connect(): fd={:?} remote={:?}", fd, remote);
         let future = self.engine.connect(fd, remote);
         self.rt.scheduler().insert(future).into_raw()
     }
 
+    ///
+    /// **Brief**
+    ///
+    /// Closes a connection referred to by `fd`.
+    ///
+    /// **Return Value**
+    ///
+    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// returned instead.
+    ///
     pub fn close(&mut self, fd: FileDescriptor) -> Result<(), Fail> {
         trace!("close(): fd={:?}", fd);
         self.engine.close(fd)
@@ -122,6 +189,12 @@ impl<RT: Runtime> LibOS<RT> {
         self.rt.scheduler().insert(future).into_raw()
     }
 
+    ///
+    /// **Brief**
+    ///
+    /// Invalidates the queue token referred to by `qt`. Any operations on this
+    /// operations will fail.
+    ///
     pub fn drop_qtoken(&mut self, qt: QToken) {
         drop(self.rt.scheduler().from_raw_handle(qt).unwrap());
     }
