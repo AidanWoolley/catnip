@@ -80,7 +80,7 @@ impl<RT: Runtime> LibOS<RT> {
         self.engine.listen(fd, backlog)
     }
 
-    pub fn accept(&mut self, fd: FileDescriptor) -> u64 {
+    pub fn accept(&mut self, fd: FileDescriptor) -> QToken {
         let future = self.engine.accept(fd);
         self.rt.scheduler().insert(future).into_raw()
     }
