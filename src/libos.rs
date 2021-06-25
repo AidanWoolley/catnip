@@ -73,28 +73,34 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn bind(&mut self, fd: FileDescriptor, endpoint: Endpoint) -> Result<(), Fail> {
+        trace!("bind(): fd={:?} endpoint={:?}", fd, endpoint);
         self.engine.bind(fd, endpoint)
     }
 
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
+        trace!{"listen(): fd={:?} backlog={:?}", fd, backlog}
         self.engine.listen(fd, backlog)
     }
 
-    pub fn accept(&mut self, fd: FileDescriptor) -> u64 {
+    pub fn accept(&mut self, fd: FileDescriptor) -> QToken {
+        trace!("accept(): {:?}", fd);
         let future = self.engine.accept(fd);
         self.rt.scheduler().insert(future).into_raw()
     }
 
     pub fn connect(&mut self, fd: FileDescriptor, remote: Endpoint) -> QToken {
+        trace!("connect(): fd={:?} remote={:?}", fd, remote);
         let future = self.engine.connect(fd, remote);
         self.rt.scheduler().insert(future).into_raw()
     }
 
     pub fn close(&mut self, fd: FileDescriptor) -> Result<(), Fail> {
+        trace!("close(): fd={:?}", fd);
         self.engine.close(fd)
     }
 
     pub fn push(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t) -> QToken {
+        trace!("push(): fd={:?}", fd);
         let buf = self.rt.clone_sgarray(sga);
         let future = self.engine.push(fd, buf);
         self.rt.scheduler().insert(future).into_raw()
@@ -121,12 +127,14 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn pop(&mut self, fd: FileDescriptor) -> QToken {
+        trace!("pop(): fd={:?}", fd);
         let future = self.engine.pop(fd);
         self.rt.scheduler().insert(future).into_raw()
     }
 
     // If this returns a result, `qt` is no longer valid.
     pub fn poll(&mut self, qt: QToken) -> Option<dmtr_qresult_t> {
+        trace!("poll(): qt={:?}", qt);
         self.poll_bg_work();
         let handle = match self.rt.scheduler().from_raw_handle(qt) {
             None => {
@@ -143,11 +151,13 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn wait(&mut self, qt: QToken) -> dmtr_qresult_t {
+        trace!("wait(): qt={:?}", qt);
         let (qd, r) = self.wait2(qt);
         dmtr_qresult_t::pack(&self.rt, r, qd, qt)
     }
 
     pub fn wait2(&mut self, qt: QToken) -> (FileDescriptor, OperationResult<RT>) {
+        trace!("wait2(): qt={:?}", qt);
         let handle = self.rt.scheduler().from_raw_handle(qt).unwrap();
         loop {
             self.poll_bg_work();
