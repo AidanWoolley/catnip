@@ -145,17 +145,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.push(fd, buf)),
             Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Push(fd, self.ipv4.udp.push(fd, buf));
-                Operation::Udp(udp_op)
-            },
-            _ => panic!("TODO: Invalid fd"),
-        }
-    }
-
-    pub fn pushto(&mut self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Operation<RT> {
-        match self.file_table.get(fd) {
-            Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Push(fd, self.ipv4.udp.pushto(fd, buf, to));
+                let udp_op = UdpOperation::<RT>::Push(fd, self.ipv4.udp.push(fd, buf));
                 Operation::Udp(udp_op)
             },
             _ => panic!("TODO: Invalid fd"),
