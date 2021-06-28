@@ -127,10 +127,6 @@ impl<RT: Runtime> Engine<RT> {
     pub fn accept(&mut self, fd: FileDescriptor) -> Operation<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.accept(fd)),
-            Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Accept(fd, self.ipv4.udp.accept());
-                Operation::Udp(udp_op)
-            },
             _ => panic!("TODO: Invalid fd"),
         }
     }
