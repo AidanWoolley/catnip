@@ -11,7 +11,7 @@ use crate::{
     },
     protocols::{
         tcp::operations::TcpOperation,
-        udp::peer::UdpOperation,
+        udp::UdpOperation,
     },
     runtime::Runtime,
     sync::SharedWaker,

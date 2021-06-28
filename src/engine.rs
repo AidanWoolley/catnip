@@ -22,10 +22,10 @@ use crate::{
             PopFuture,
             PushFuture,
         },
-        udp::peer::{
-            PopFuture as UdpPopFuture,
+        udp::{
+            UdpPopFuture,
             UdpOperation,
-        },
+        }
     },
     runtime::Runtime,
     scheduler::Operation,
@@ -97,7 +97,7 @@ impl<RT: Runtime> Engine<RT> {
     pub fn socket(&mut self, protocol: Protocol) -> FileDescriptor {
         match protocol {
             Protocol::Tcp => self.ipv4.tcp.socket(),
-            Protocol::Udp => self.ipv4.udp.socket(),
+            Protocol::Udp => self.ipv4.udp.socket().unwrap(),
         }
     }
 
@@ -109,7 +109,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint)),
             Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
+                let udp_op = UdpOperation::<RT>::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
                 Operation::Udp(udp_op)
             },
             _ => panic!("TODO: Invalid fd"),
@@ -127,10 +127,6 @@ impl<RT: Runtime> Engine<RT> {
     pub fn accept(&mut self, fd: FileDescriptor) -> Operation<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.accept(fd)),
-            Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Accept(fd, self.ipv4.udp.accept());
-                Operation::Udp(udp_op)
-            },
             _ => panic!("TODO: Invalid fd"),
         }
     }
@@ -149,17 +145,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.push(fd, buf)),
             Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Push(fd, self.ipv4.udp.push(fd, buf));
-                Operation::Udp(udp_op)
-            },
-            _ => panic!("TODO: Invalid fd"),
-        }
-    }
-
-    pub fn pushto(&mut self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Operation<RT> {
-        match self.file_table.get(fd) {
-            Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Push(fd, self.ipv4.udp.pushto(fd, buf, to));
+                let udp_op = UdpOperation::<RT>::Push(fd, self.ipv4.udp.push(fd, buf));
                 Operation::Udp(udp_op)
             },
             _ => panic!("TODO: Invalid fd"),

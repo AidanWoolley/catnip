@@ -29,6 +29,9 @@ custom_error! {#[derive(Clone)] pub Fail
     TypeMismatch{details: Str} = "type mismatch ({details})",
     Unsupported{details: Str} = "unsupported ({details})",
     Invalid {details: Str} = "invalid ({details})",
+    TooManyOpenedFiles {details: Str} = "too many opened files ({details})",
+    AddressInUse {details: Str} = "address in use ({details})",
+    BadFileDescriptor {details: Str} = "bad file descriptor ({details})",
 }
 
 impl From<IoError> for Fail {
@@ -84,6 +87,9 @@ impl Fail {
             Fail::IoError {} => libc::EIO,
             Fail::BorrowMutError {} => libc::EINVAL,
             Fail::Invalid { .. } => libc::EINVAL,
+            Fail::TooManyOpenedFiles { .. } => libc::EMFILE,
+            Fail::AddressInUse { .. } => libc::EADDRINUSE,
+            Fail::BadFileDescriptor { .. } => libc::EBADF,
         }
     }
 }

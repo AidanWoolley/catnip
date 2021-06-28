@@ -1,74 +1,46 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use super::datagram::{
-    UdpDatagram,
-    UdpHeader,
+use super::{
+    datagram::{UdpDatagram, UdpHeader},
+    listener::Listener,
+    operations::PopFuture,
+    socket::Socket,
 };
+
 use crate::{
     fail::Fail,
-    file_table::{
-        File,
-        FileDescriptor,
-        FileTable,
-    },
-    operations::{
-        OperationResult,
-        ResultFuture,
-    },
+    file_table::{File, FileDescriptor, FileTable},
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         ipv4,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
     },
     runtime::Runtime,
     scheduler::SchedulerHandle,
 };
-use futures::channel::mpsc;
-use futures::stream::StreamExt;
-use std::collections::HashMap;
-use std::{
-    cell::RefCell,
-    collections::VecDeque,
-    future::Future,
-    pin::Pin,
-    rc::Rc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
-};
 
-pub struct UdpPeer<RT: Runtime> {
-    inner: Rc<RefCell<Inner<RT>>>,
-}
+use futures::{channel::mpsc, stream::StreamExt};
 
-struct Listener<T> {
-    buf: VecDeque<(Option<ipv4::Endpoint>, T)>,
-    waker: Option<Waker>,
-}
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[derive(Debug)]
-struct Socket {
-    // `bind(2)` fixes a local address
-    local: Option<ipv4::Endpoint>,
-    // `connect(2)` fixes a remote address
-    remote: Option<ipv4::Endpoint>,
-}
+//==============================================================================
+// Constants & Structures
+//==============================================================================
 
 type OutgoingReq<T> = (Option<ipv4::Endpoint>, ipv4::Endpoint, T);
 type OutgoingSender<T> = mpsc::UnboundedSender<OutgoingReq<T>>;
 type OutgoingReceiver<T> = mpsc::UnboundedReceiver<OutgoingReq<T>>;
 
-struct Inner<RT: Runtime> {
+///
+/// UDP Peer
+///
+/// # References
+///
+/// - See https://datatracker.ietf.org/doc/html/rfc768 for details on UDP.
+///
+struct UdpPeerInner<RT: Runtime> {
     rt: RT,
     #[allow(unused)]
     arp: arp::Peer<RT>,
@@ -82,12 +54,25 @@ struct Inner<RT: Runtime> {
     handle: SchedulerHandle,
 }
 
-impl<RT: Runtime> UdpPeer<RT> {
-    pub fn new(rt: RT, arp: arp::Peer<RT>, file_table: FileTable) -> Self {
-        let (tx, rx) = mpsc::unbounded();
-        let future = Self::background(rt.clone(), arp.clone(), rx);
-        let handle = rt.spawn(future);
-        let inner = Inner {
+pub struct UdpPeer<RT: Runtime> {
+    inner: Rc<RefCell<UdpPeerInner<RT>>>,
+}
+
+//==============================================================================
+// Associate Functions
+//==============================================================================
+
+/// Associate functions for [UdpPeerInner].
+impl<RT: Runtime> UdpPeerInner<RT> {
+    /// Creates a UDP peer inner.
+    fn new(
+        rt: RT,
+        arp: arp::Peer<RT>,
+        file_table: FileTable,
+        tx: OutgoingSender<RT::Buf>,
+        handle: SchedulerHandle,
+    ) -> Self {
+        Self {
             rt,
             arp,
             file_table,
@@ -95,7 +80,46 @@ impl<RT: Runtime> UdpPeer<RT> {
             bound: HashMap::new(),
             outgoing: tx,
             handle,
-        };
+        }
+    }
+
+    /// Sends a UDP packet.
+    fn send_datagram(
+        &self,
+        buf: RT::Buf,
+        local: Option<ipv4::Endpoint>,
+        remote: ipv4::Endpoint,
+    ) -> Result<(), Fail> {
+        // First, try to send the packet immediately. If we can't defer the
+        // operation to the async path.
+        if let Some(link_addr) = self.arp.try_query(remote.addr) {
+            let datagram = UdpDatagram::new(
+                Ethernet2Header {
+                    dst_addr: link_addr,
+                    src_addr: self.rt.local_link_addr(),
+                    ether_type: EtherType2::Ipv4,
+                },
+                Ipv4Header::new(self.rt.local_ipv4_addr(), remote.addr, Ipv4Protocol2::Udp),
+                UdpHeader::new(local.map(|l| l.port), remote.port),
+                buf,
+                self.rt.udp_options().tx_checksum(),
+            );
+            self.rt.transmit(datagram);
+        } else {
+            self.outgoing.unbounded_send((local, remote, buf)).unwrap();
+        }
+        Ok(())
+    }
+}
+
+/// Associate functions for [UdpPeer].
+impl<RT: Runtime> UdpPeer<RT> {
+    /// Creates a Udp peer.
+    pub fn new(rt: RT, arp: arp::Peer<RT>, file_table: FileTable) -> Self {
+        let (tx, rx) = mpsc::unbounded();
+        let future = Self::background(rt.clone(), arp.clone(), rx);
+        let handle = rt.spawn(future);
+        let inner = UdpPeerInner::new(rt, arp, file_table, tx, handle);
         Self {
             inner: Rc::new(RefCell::new(inner)),
         }
@@ -105,25 +129,17 @@ impl<RT: Runtime> UdpPeer<RT> {
         while let Some((local, remote, buf)) = rx.next().await {
             let r: Result<_, Fail> = try {
                 let link_addr = arp.query(remote.addr).await?;
-                let datagram = UdpDatagram {
-                    ethernet2_hdr: Ethernet2Header {
+                let datagram = UdpDatagram::new(
+                    Ethernet2Header {
                         dst_addr: link_addr,
                         src_addr: rt.local_link_addr(),
                         ether_type: EtherType2::Ipv4,
                     },
-                    ipv4_hdr: Ipv4Header::new(
-                        rt.local_ipv4_addr(),
-                        remote.addr,
-                        Ipv4Protocol2::Udp,
-                    ),
-                    udp_hdr: UdpHeader {
-                        src_port: local.map(|l| l.port),
-                        dst_port: remote.port,
-                    },
-                    data: buf,
-
-                    tx_checksum_offload: rt.udp_options().tx_checksum_offload,
-                };
+                    Ipv4Header::new(rt.local_ipv4_addr(), remote.addr, Ipv4Protocol2::Udp),
+                    UdpHeader::new(local.map(|l| l.port), remote.port),
+                    buf,
+                    rt.udp_options().tx_checksum(),
+                );
                 rt.transmit(datagram);
             };
             if let Err(e) = r {
@@ -132,242 +148,172 @@ impl<RT: Runtime> UdpPeer<RT> {
         }
     }
 
+    ///
+    /// Dummy accept operation.
+    ///
+    /// - TODO: we should drop this function because it is meaningless for UDP.
+    ///
     pub fn accept(&self) -> Fail {
         Fail::Malformed {
             details: "Operation not supported",
         }
     }
 
-    pub fn socket(&self) -> FileDescriptor {
+    /// Opens a UDP socket.
+    pub fn socket(&self) -> Result<FileDescriptor, Fail> {
         let mut inner = self.inner.borrow_mut();
         let fd = inner.file_table.alloc(File::UdpSocket);
-        let socket = Socket {
-            local: None,
-            remote: None,
-        };
-        assert!(inner.sockets.insert(fd, socket).is_none());
-        fd
+        let socket = Socket::default();
+        if inner.sockets.insert(fd, socket).is_some() {
+            return Err(Fail::TooManyOpenedFiles {
+                details: "file table overflow",
+            });
+        }
+        Ok(fd)
     }
 
+    /// Binds a socket to an endpoint address.
     pub fn bind(&self, fd: FileDescriptor, addr: ipv4::Endpoint) -> Result<(), Fail> {
         let mut inner = self.inner.borrow_mut();
+        // Endpoint in use.
         if inner.bound.contains_key(&addr) {
             return Err(Fail::Malformed {
                 details: "Port already listening",
             });
         }
+
+        // Update file descriptor with local endpoint.
         match inner.sockets.get_mut(&fd) {
-            Some(Socket { ref mut local, .. }) if local.is_none() => {
-                *local = Some(addr);
-            },
+            Some(s) if s.local().is_none() => {
+                s.set_local(Some(addr));
+            }
             _ => {
                 return Err(Fail::Malformed {
                     details: "Invalid file descriptor on bind",
                 })
-            },
+            }
         }
-        let listener = Listener {
-            buf: VecDeque::new(),
-            waker: None,
-        };
-        assert!(inner
+
+        // Register listener.
+        let listener = Listener::default();
+        if inner
             .bound
             .insert(addr, Rc::new(RefCell::new(listener)))
-            .is_none());
+            .is_some()
+        {
+            return Err(Fail::AddressInUse {
+                details: "the given address is alreay in use",
+            });
+        }
+
         Ok(())
     }
 
+    // Connects to a socket.
     pub fn connect(&self, fd: FileDescriptor, addr: ipv4::Endpoint) -> Result<(), Fail> {
         let mut inner = self.inner.borrow_mut();
+
+        // Update file descriptor with remote endpoint.
         match inner.sockets.get_mut(&fd) {
-            Some(Socket { ref mut remote, .. }) if remote.is_none() => {
-                *remote = Some(addr);
+            Some(s) if s.remote().is_none() => {
+                s.set_remote(Some(addr));
                 Ok(())
-            },
+            }
             _ => Err(Fail::Malformed {
                 details: "Invalid file descriptor on connect",
             }),
         }
     }
 
-    pub fn receive(&self, ipv4_header: &Ipv4Header, buf: RT::Buf) -> Result<(), Fail> {
-        let mut inner = self.inner.borrow_mut();
-        let (hdr, data) = UdpHeader::parse(ipv4_header, buf, inner.rt.udp_options().rx_checksum_offload)?;
-        let local = ipv4::Endpoint::new(ipv4_header.dst_addr, hdr.dst_port);
-        let remote = hdr
-            .src_port
-            .map(|p| ipv4::Endpoint::new(ipv4_header.src_addr, p));
-
-        // TODO: Send ICMPv4 error in this condition.
-        let listener = inner.bound.get_mut(&local).ok_or(Fail::Malformed {
-            details: "Port not bound",
-        })?;
-        let mut l = listener.borrow_mut();
-        l.buf.push_back((remote, data));
-        if let Some(w) = l.waker.take() { w.wake() }
-        Ok(())
-    }
-
-    pub fn push(&self, fd: FileDescriptor, buf: RT::Buf) -> Result<(), Fail> {
-        let inner = self.inner.borrow();
-        let (local, remote) = match inner.sockets.get(&fd) {
-            Some(Socket {
-                local,
-                remote: Some(remote),
-            }) => (*local, *remote),
-            _ => {
-                return Err(Fail::Malformed {
-                    details: "Invalid file descriptor on push",
-                })
-            },
-        };
-        inner.send_datagram(buf, local, remote)
-    }
-
-    pub fn pushto(&self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Result<(), Fail> {
-        let inner = self.inner.borrow();
-        let local = match inner.sockets.get(&fd) {
-            Some(Socket { local, .. }) => *local,
-            _ => {
-                return Err(Fail::Malformed {
-                    details: "Invalid file descriptor on pushto",
-                })
-            },
-        };
-        inner.send_datagram(buf, local, to)
-    }
-
-    pub fn pop(&self, fd: FileDescriptor) -> PopFuture<RT> {
-        let inner = self.inner.borrow();
-        let listener = match inner.sockets.get(&fd) {
-            Some(Socket {
-                local: Some(local), ..
-            }) => Ok(inner.bound.get(&local).unwrap().clone()),
-            _ => Err(Fail::Malformed {
-                details: "Invalid file descriptor",
-            }),
-        };
-        PopFuture { fd, listener }
-    }
-
+    /// Closes a socket.
     pub fn close(&self, fd: FileDescriptor) -> Result<(), Fail> {
         let mut inner = self.inner.borrow_mut();
+
         let socket = match inner.sockets.remove(&fd) {
             Some(s) => s,
             None => {
                 return Err(Fail::Malformed {
                     details: "Invalid file descriptor",
                 })
-            },
+            }
         };
-        if let Some(local) = socket.local {
-            assert!(inner.bound.remove(&local).is_some());
+
+        // Remove endpoint biding.
+        if let Some(local) = socket.local() {
+            if inner.bound.remove(&local).is_none() {
+                return Err(Fail::BadFileDescriptor {
+                    details: "socket is not bound",
+                });
+            }
         }
+
+        // Free file table.
         inner.file_table.free(fd);
+
         Ok(())
     }
-}
 
-impl<RT: Runtime> Inner<RT> {
-    fn send_datagram(
-        &self,
-        buf: RT::Buf,
-        local: Option<ipv4::Endpoint>,
-        remote: ipv4::Endpoint,
-    ) -> Result<(), Fail> {
-        // First, try to send the packet immediately.
-        if let Some(link_addr) = self.arp.try_query(remote.addr) {
-            let datagram = UdpDatagram {
-                ethernet2_hdr: Ethernet2Header {
-                    dst_addr: link_addr,
-                    src_addr: self.rt.local_link_addr(),
-                    ether_type: EtherType2::Ipv4,
-                },
-                ipv4_hdr: Ipv4Header::new(
-                    self.rt.local_ipv4_addr(),
-                    remote.addr,
-                    Ipv4Protocol2::Udp,
-                ),
-                udp_hdr: UdpHeader {
-                    src_port: local.map(|l| l.port),
-                    dst_port: remote.port,
-                },
-                data: buf,
+    /// Consumes the payload from a buffer.
+    pub fn receive(&self, ipv4_header: &Ipv4Header, buf: RT::Buf) -> Result<(), Fail> {
+        let mut inner = self.inner.borrow_mut();
+        let (hdr, data) = UdpHeader::parse(ipv4_header, buf, inner.rt.udp_options().rx_checksum())?;
+        let local = ipv4::Endpoint::new(ipv4_header.dst_addr, hdr.dest_port());
+        let remote = hdr
+            .src_port()
+            .map(|p| ipv4::Endpoint::new(ipv4_header.src_addr, p));
 
-                tx_checksum_offload: self.rt.udp_options().tx_checksum_offload,
-            };
-            self.rt.transmit(datagram);
+        // TODO: Send ICMPv4 error in this condition.
+        let listener = inner.bound.get_mut(&local).ok_or(Fail::Malformed {
+            details: "Port not bound",
+        })?;
+
+        // Consume data and wakeup receiver.
+        let mut l = listener.borrow_mut();
+        l.push_data(remote, data);
+        if let Some(w) = l.take_waker() {
+            w.wake()
         }
-        // Otherwise defer to the async path.
-        else {
-            self.outgoing.unbounded_send((local, remote, buf)).unwrap();
-        }
+
         Ok(())
     }
-}
 
-pub struct PopFuture<RT: Runtime> {
-    pub fd: FileDescriptor,
-    listener: Result<Rc<RefCell<Listener<RT::Buf>>>, Fail>,
-}
-
-impl<RT: Runtime> Future for PopFuture<RT> {
-    type Output = Result<(Option<ipv4::Endpoint>, RT::Buf), Fail>;
-
-    fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
-        let self_ = self.get_mut();
-        match self_.listener {
-            Err(ref e) => Poll::Ready(Err(e.clone())),
-            Ok(ref l) => {
-                let mut listener = l.borrow_mut();
-                if let Some(r) = listener.buf.pop_front() { return Poll::Ready(Ok(r)) }
-                let waker = ctx.waker();
-                listener.waker = Some(waker.clone());
-                Poll::Pending
-            },
+    /// Pushes data to a socket.
+    pub fn push(&self, fd: FileDescriptor, buf: RT::Buf) -> Result<(), Fail> {
+        let inner = self.inner.borrow();
+        match inner.sockets.get(&fd) {
+            Some(s) if s.local().is_some() && s.remote().is_some() => {
+                inner.send_datagram(buf, s.local(), s.remote().unwrap())
+            }
+            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {
+                details: "remote() endpoint not bound",
+            }),
+            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {
+                details: "remote() endpoint not bound",
+            }),
+            _ => Err(Fail::Malformed {
+                details: "Invalid file descriptor",
+            }),
         }
     }
-}
 
-pub enum UdpOperation<RT: Runtime> {
-    Accept(FileDescriptor, Fail),
-    Connect(FileDescriptor, Result<(), Fail>),
-    Push(FileDescriptor, Result<(), Fail>),
-    Pop(ResultFuture<PopFuture<RT>>),
-}
+    /// Pops data from a socket.
+    pub fn pop(&self, fd: FileDescriptor) -> PopFuture<RT> {
+        let inner = self.inner.borrow();
+        let listener = match inner.sockets.get(&fd) {
+            Some(s) if s.local().is_some() && s.remote().is_some() => {
+                Ok(inner.bound.get(&s.local().unwrap()).unwrap().clone())
+            }
+            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {
+                details: "remote() endpoint not bound",
+            }),
+            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {
+                details: "remote() endpoint not bound",
+            }),
+            _ => Err(Fail::Malformed {
+                details: "Invalid file descriptor",
+            }),
+        };
 
-impl<RT: Runtime> Future for UdpOperation<RT> {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<()> {
-        match self.get_mut() {
-            UdpOperation::Accept(..) | UdpOperation::Connect(..) | UdpOperation::Push(..) => {
-                Poll::Ready(())
-            },
-            UdpOperation::Pop(ref mut f) => Future::poll(Pin::new(f), ctx),
-        }
-    }
-}
-
-impl<RT: Runtime> UdpOperation<RT> {
-    pub fn expect_result(self) -> (FileDescriptor, OperationResult<RT>) {
-        match self {
-            UdpOperation::Push(fd, Err(e))
-            | UdpOperation::Connect(fd, Err(e))
-            | UdpOperation::Accept(fd, e) => (fd, OperationResult::Failed(e)),
-            UdpOperation::Connect(fd, Ok(())) => (fd, OperationResult::Connect),
-            UdpOperation::Push(fd, Ok(())) => (fd, OperationResult::Push),
-
-            UdpOperation::Pop(ResultFuture {
-                future,
-                done: Some(Ok((addr, bytes))),
-            }) => (future.fd, OperationResult::Pop(addr, bytes)),
-            UdpOperation::Pop(ResultFuture {
-                future,
-                done: Some(Err(e)),
-            }) => (future.fd, OperationResult::Failed(e)),
-
-            _ => panic!("Future not ready"),
-        }
+        PopFuture::new(fd, listener)
     }
 }
