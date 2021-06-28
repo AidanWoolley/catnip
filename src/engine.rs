@@ -22,10 +22,10 @@ use crate::{
             PopFuture,
             PushFuture,
         },
-        udp::peer::{
-            PopFuture as UdpPopFuture,
+        udp::{
+            UdpPopFuture,
             UdpOperation,
-        },
+        }
     },
     runtime::Runtime,
     scheduler::Operation,
@@ -97,7 +97,7 @@ impl<RT: Runtime> Engine<RT> {
     pub fn socket(&mut self, protocol: Protocol) -> FileDescriptor {
         match protocol {
             Protocol::Tcp => self.ipv4.tcp.socket(),
-            Protocol::Udp => self.ipv4.udp.socket(),
+            Protocol::Udp => self.ipv4.udp.socket().unwrap(),
         }
     }
 
@@ -109,7 +109,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint)),
             Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
+                let udp_op = UdpOperation::<RT>::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
                 Operation::Udp(udp_op)
             },
             _ => panic!("TODO: Invalid fd"),
