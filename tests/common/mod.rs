@@ -1,77 +1,54 @@
-#![feature(const_fn, const_panic, const_alloc_layout)]
-#![feature(const_mut_refs, const_type_name)]
-#![feature(new_uninit)]
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 
 use arrayvec::ArrayVec;
-use std::ptr;
-use std::mem;
-use std::slice;
 use catnip::{
-    interop::{
-        dmtr_opcode_t,
-        dmtr_sgarray_t,
-        dmtr_sgaseg_t,
-    },
+    collections::bytes::{Bytes, BytesMut},
+    interop::dmtr_sgarray_t,
+    interop::dmtr_sgaseg_t,
     libos::LibOS,
-    protocols::{
-        arp,
-        ethernet2::MacAddress,
-        ip,
-        ipv4,
-        udp,
-        tcp,
-    },
-    runtime::{
-        RECEIVE_BATCH_SIZE,
-        PacketBuf,
-        Runtime,
-    },
-    scheduler::{
-        Operation,
-        Scheduler,
-        SchedulerHandle,
-    },
-    collections::bytes::{
-        Bytes,
-        BytesMut,
-    },
-    test_helpers::{
-        ALICE_IPV4,
-        ALICE_MAC,
-        BOB_IPV4,
-        BOB_MAC,
-    },
-    timer::{
-        Timer,
-        TimerRc,
-    },
+    protocols::ethernet2::MacAddress,
+    protocols::{arp, tcp, udp},
+    runtime::Runtime,
+    runtime::{PacketBuf, RECEIVE_BATCH_SIZE},
+    scheduler::{Operation, Scheduler, SchedulerHandle},
+    timer::{Timer, TimerRc},
 };
-use crossbeam_channel;
+use crossbeam_channel::{self, Receiver, Sender};
 use futures::FutureExt;
-use libc;
 use rand::{
-    distributions::{
-        Distribution,
-        Standard,
-    },
+    distributions::{Distribution, Standard},
     rngs::SmallRng,
     seq::SliceRandom,
-    Rng,
-    SeedableRng,
+    Rng, SeedableRng,
 };
+use std::mem;
+use std::ptr;
+use std::slice;
 use std::{
     cell::RefCell,
-    convert::TryFrom,
-    env,
     future::Future,
     net::Ipv4Addr,
     rc::Rc,
-    thread,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
+
+use flexi_logger::Logger;
+use std::sync::Once;
+
+static INIT_LOG: Once = Once::new();
+
+pub fn initialize_logging() {
+    INIT_LOG.call_once(|| {
+        Logger::try_with_env().unwrap().start().unwrap();
+    });
+}
+
+
+pub const ALICE_IPV4: Ipv4Addr = Ipv4Addr::new(192, 168, 1, 1);
+pub const ALICE_MAC: MacAddress = MacAddress::new([0x12, 0x23, 0x45, 0x67, 0x89, 0xab]);
+pub const BOB_IPV4: Ipv4Addr = Ipv4Addr::new(192, 168, 1, 2);
+pub const BOB_MAC: MacAddress = MacAddress::new([0xab, 0x89, 0x67, 0x45, 0x23, 0x12]);
 
 #[derive(Clone)]
 pub struct TestRuntime {
@@ -278,123 +255,32 @@ impl Runtime for TestRuntime {
     }
 }
 
-#[test]
-// #[cfg(not(feature = "threadunsafe"))]
-fn udp_echo() {
-    let (forward_tx, forward_rx) = crossbeam_channel::unbounded();
-    let (backward_tx, backward_rx) = crossbeam_channel::unbounded();
-
+/// Initializes the libOS.
+pub fn libos_init(
+    link_addr: MacAddress,
+    ipv4_addr: Ipv4Addr,
+    tx: Sender<Bytes>,
+    rx: Receiver<Bytes>,
+) -> LibOS<TestRuntime> {
     let now = Instant::now();
-    let port = ip::Port::try_from(80).unwrap();
-    let alice_addr = ipv4::Endpoint::new(ALICE_IPV4, port);
-    let bob_addr = ipv4::Endpoint::new(BOB_IPV4, port);
+    let rt = TestRuntime::new(now, link_addr, ipv4_addr, rx, tx);
+    LibOS::new(rt).unwrap()
+}
 
-    let num_iters: usize = env::var("NUM_ITERS")
-        .map(|s| s.parse().unwrap())
-        .unwrap_or(1);
+/// Cooks a SGA buffer.
+pub fn libos_cook_data(libos: &mut LibOS<TestRuntime>) -> dmtr_sgarray_t {
     let size = 32;
-    let fill_char = 'a' as u8;
-    let (done_tx, done_rx) = crossbeam_channel::bounded(1);
+    let fill_char = b'a';
 
-    let client = thread::spawn(move || {
-        let alice_rt = TestRuntime::new(now, ALICE_MAC, ALICE_IPV4, backward_rx, forward_tx);
-        let mut alice = LibOS::new(alice_rt).unwrap();
-
-        let alice_fd = alice.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
-        alice.bind(alice_fd, alice_addr).unwrap();
-        let qt = alice.connect(alice_fd, bob_addr);
-        assert_eq!(alice.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
-
-        let mut buf = BytesMut::zeroed(size);
-        for a in &mut buf[..] {
-            *a = fill_char;
-        }
-        let body_sga = alice.rt().into_sgarray(buf.freeze());
-
-        let mut samples = Vec::with_capacity(num_iters);
-
-        for _ in 0..num_iters {
-            let start = Instant::now();
-
-            let qt = alice.push(alice_fd, &body_sga);
-            assert_eq!(alice.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
-
-            let qt = alice.pop(alice_fd);
-            let qr = alice.wait(qt);
-            assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
-
-            let sga = unsafe { qr.qr_value.sga };
-            assert_eq!(sga.sga_numsegs, 1);
-            assert_eq!(sga.sga_segs[0].sgaseg_len, size as u32);
-            alice.rt().free_sgarray(sga);
-
-            samples.push(start.elapsed());
-        }
-
-        alice.rt().free_sgarray(body_sga);
-        done_tx.send(samples).unwrap();
-    });
-
-    let server = thread::spawn(move || {
-        let bob_rt = TestRuntime::new(now, BOB_MAC, BOB_IPV4, forward_rx, backward_tx);
-        let mut bob = LibOS::new(bob_rt).unwrap();
-
-        let bob_fd = bob.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
-        bob.bind(bob_fd, bob_addr).unwrap();
-        let qt = bob.connect(bob_fd, alice_addr);
-        assert_eq!(bob.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
-
-        for _ in 0..num_iters {
-            let qt = bob.pop(bob_fd);
-            let qr = bob.wait(qt);
-            assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
-
-            let sga = unsafe { qr.qr_value.sga };
-            assert_eq!(sga.sga_numsegs, 1);
-            assert_eq!(sga.sga_segs[0].sgaseg_len, size as u32);
-
-            let qt = bob.push(bob_fd, &sga);
-            assert_eq!(bob.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
-            bob.rt().free_sgarray(sga);
-        }
-    });
-
-    client.join().unwrap();
-    server.join().unwrap();
-
-    let samples = done_rx.recv().unwrap();
-    let mut h = histogram::Histogram::new();
-    for s in samples {
-        h.increment(s.as_nanos() as u64).unwrap();
+    let mut buf = BytesMut::zeroed(size);
+    for a in &mut buf[..] {
+        *a = fill_char;
     }
-    println!("Min:   {:?}", Duration::from_nanos(h.minimum().unwrap()));
-    println!(
-        "p25:   {:?}",
-        Duration::from_nanos(h.percentile(0.25).unwrap())
-    );
-    println!(
-        "p50:   {:?}",
-        Duration::from_nanos(h.percentile(0.50).unwrap())
-    );
-    println!(
-        "p75:   {:?}",
-        Duration::from_nanos(h.percentile(0.75).unwrap())
-    );
-    println!(
-        "p90:   {:?}",
-        Duration::from_nanos(h.percentile(0.90).unwrap())
-    );
-    println!(
-        "p95:   {:?}",
-        Duration::from_nanos(h.percentile(0.95).unwrap())
-    );
-    println!(
-        "p99:   {:?}",
-        Duration::from_nanos(h.percentile(0.99).unwrap())
-    );
-    println!(
-        "p99.9: {:?}",
-        Duration::from_nanos(h.percentile(0.999).unwrap())
-    );
-    println!("Max:   {:?}", Duration::from_nanos(h.maximum().unwrap()));
+    libos.rt().into_sgarray(buf.freeze())
+}
+
+/// Verifies the integrity of a buffer.
+pub fn libos_check_data(sga: dmtr_sgarray_t) {
+    assert_eq!(sga.sga_numsegs, 1);
+    assert_eq!(sga.sga_segs[0].sgaseg_len, 32 as u32);
 }
