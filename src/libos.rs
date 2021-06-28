@@ -174,6 +174,7 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn push2(&mut self, fd: FileDescriptor, buf: RT::Buf) -> QToken {
+        trace!("push2(): fd={:?}", fd);
         let future = self.engine.push(fd, buf);
         self.rt.scheduler().insert(future).into_raw()
     }
@@ -231,6 +232,7 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn wait_all_pushes(&mut self, qts: &mut Vec<QToken>) {
+        trace!("wait_all_pushes(): qts={:?}", qts);
         self.poll_bg_work();
         for qt in qts.drain(..) {
             let handle = self.rt.scheduler().from_raw_handle(qt).unwrap();
@@ -240,6 +242,7 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn wait_any(&mut self, qts: &[QToken]) -> (usize, dmtr_qresult_t) {
+        trace!("wait_any(): qts={:?}", qts);
         loop {
             self.poll_bg_work();
             for (i, &qt) in qts.iter().enumerate() {
@@ -254,6 +257,7 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn wait_any2(&mut self, qts: &[QToken]) -> (usize, FileDescriptor, OperationResult<RT>) {
+        trace!("wait_any2(): qts={:?}", qts);
         loop {
             self.poll_bg_work();
             for (i, &qt) in qts.iter().enumerate() {

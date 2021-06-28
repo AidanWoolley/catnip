@@ -252,9 +252,19 @@ impl<RT: Runtime> Peer<RT> {
         let inner = self.inner.borrow_mut();
         let key = match inner.sockets.get(&fd) {
             Some(Socket::Established { local, remote }) => (*local, *remote),
-            Some(..) => {
+            Some(Socket::Connecting { .. }) => {
                 return Poll::Ready(Err(Fail::Malformed {
-                    details: "Recv: Socket not established",
+                    details: "pool_recv(): socket connecting",
+                }))
+            },
+            Some(Socket::Inactive{ .. }) => {
+                return Poll::Ready(Err(Fail::Malformed {
+                    details: "pool_recv(): socket inactive",
+                }))
+            },
+            Some(Socket::Listening{ .. }) => {
+                return Poll::Ready(Err(Fail::Malformed {
+                    details: "pool_recv(): socket listening",
                 }))
             },
             None => return Poll::Ready(Err(Fail::Malformed { details: "Bad FD" })),

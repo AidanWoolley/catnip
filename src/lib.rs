@@ -15,7 +15,6 @@
 #![recursion_limit = "512"]
 #![feature(test)]
 #![feature(min_type_alias_impl_trait)]
-extern crate test;
 
 #[macro_use]
 extern crate num_derive;

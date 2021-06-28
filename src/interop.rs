@@ -47,8 +47,8 @@ pub enum dmtr_opcode_t {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct dmtr_accept_result_t {
-    qd: c_int,
-    addr: sockaddr_in,
+    pub qd: c_int,
+    pub addr: sockaddr_in,
 }
 
 #[repr(C)]
