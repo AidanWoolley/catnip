@@ -24,6 +24,7 @@ libc = "0.2.97"
 log = "0.4.14"
 # mimalloc = { version = "0.1.19", default-features = false }
 must-let = { git = "https://github.com/sujayakar/must-let" }
+nix = "0.21.0"
 num-derive = "0.3.3"
 num-traits = "0.2.14"
 pin-project = "1.0.7"

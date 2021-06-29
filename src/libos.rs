@@ -49,12 +49,17 @@ impl<RT: Runtime> LibOS<RT> {
         &self.rt
     }
 
+    pub fn use_posix_stack(&mut self) {
+        self.engine.use_posix_stack();
+    }
+
     pub fn socket(
         &mut self,
         domain: c_int,
         socket_type: c_int,
         _protocol: c_int,
     ) -> Result<FileDescriptor, Fail> {
+        trace!("socket(): domain={:?} type={:?} protocol={:?}", domain, socket_type, _protocol);
         if domain != libc::AF_INET {
             return Err(Fail::Invalid {
                 details: "Invalid domain",
@@ -279,6 +284,7 @@ impl<RT: Runtime> LibOS<RT> {
         match self.rt.scheduler().take(handle) {
             Operation::Tcp(f) => f.expect_result(),
             Operation::Udp(f) => f.expect_result(),
+            Operation::Posix(f) => f.expect_result(),
             Operation::Background(..) => panic!("Polled background operation"),
         }
     }

@@ -1,20 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use crate::{
-    fail::Fail,
-    file_table::FileDescriptor,
-    protocols::ipv4,
-    runtime::Runtime,
-};
+use crate::{fail::Fail, file_table::FileDescriptor, protocols::ipv4, runtime::Runtime};
 use std::{
     fmt,
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 pub struct ResultFuture<F: Future> {

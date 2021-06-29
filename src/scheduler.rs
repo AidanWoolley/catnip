@@ -12,6 +12,7 @@ use crate::{
     protocols::{
         tcp::operations::TcpOperation,
         udp::UdpOperation,
+        posix::operations::PosixOperation,
     },
     runtime::Runtime,
     sync::SharedWaker,
@@ -35,6 +36,7 @@ pub enum Operation<RT: Runtime> {
     // These are all stored inline to prevent hitting the allocator on insertion/removal.
     Tcp(TcpOperation<RT>),
     Udp(UdpOperation<RT>),
+    Posix(PosixOperation<RT>),
 
     // These are expected to have long lifetimes and be large enough to justify another allocation.
     Background(Pin<Box<dyn Future<Output = ()>>>),
@@ -47,6 +49,7 @@ impl<RT: Runtime> Future for Operation<RT> {
         match self.get_mut() {
             Operation::Tcp(ref mut f) => Future::poll(Pin::new(f), ctx),
             Operation::Udp(ref mut f) => Future::poll(Pin::new(f), ctx),
+            Operation::Posix(ref mut f) => Future::poll(Pin::new(f), ctx),
             Operation::Background(ref mut f) => Future::poll(Pin::new(f), ctx),
         }
     }
