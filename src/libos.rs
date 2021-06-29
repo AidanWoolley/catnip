@@ -3,6 +3,10 @@
 //! mechanisms.
 use crate::{
     engine::{Engine, Protocol},
+    engine::{
+        Engine,
+    },
+    protocols::Protocol,
     fail::Fail,
     file_table::FileDescriptor,
     interop::{dmtr_qresult_t, dmtr_sgarray_t},
