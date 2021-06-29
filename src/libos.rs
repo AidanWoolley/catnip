@@ -2,10 +2,7 @@
 //! the IO Queue abstraction, thus providing a standard interface for different kernel bypass
 //! mechanisms.
 use crate::{
-    engine::{Engine, Protocol},
-    engine::{
-        Engine,
-    },
+    engine::Engine,
     protocols::Protocol,
     fail::Fail,
     file_table::FileDescriptor,
@@ -43,6 +40,10 @@ impl<RT: Runtime> LibOS<RT> {
 
     pub fn rt(&self) -> &RT {
         &self.rt
+    }
+
+    pub fn use_posix_stack(&mut self) {
+        self.engine.use_posix_stack();
     }
 
     ///
@@ -336,6 +337,7 @@ impl<RT: Runtime> LibOS<RT> {
         match self.rt.scheduler().take(handle) {
             Operation::Tcp(f) => f.expect_result(),
             Operation::Udp(f) => f.expect_result(),
+            Operation::Posix(f) => f.expect_result(),
             Operation::Background(..) => panic!("`take_operation` attempted on background task!"),
         }
     }
