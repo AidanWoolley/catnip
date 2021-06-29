@@ -7,6 +7,7 @@
 #![feature(maybe_uninit_uninit_array, maybe_uninit_extra, maybe_uninit_ref)]
 
 use catnip::{
+    libos::LibOS,
     interop::dmtr_opcode_t,
     protocols::{ip, ipv4},
     runtime::Runtime,
@@ -24,12 +25,8 @@ use common::*;
 //==============================================================================
 
 /// Tests if a passive socket may be successfully opened and closed.
-#[test]
-fn tcp_connection_setup() {
-    let (tx, rx) = crossbeam_channel::unbounded();
-    let mut libos = libos_init(ALICE_MAC, ALICE_IPV4, tx, rx);
-
-    let port = ip::Port::try_from(80).unwrap();
+fn do_tcp_connection_setup(libos: &mut LibOS<TestRuntime>) {
+    let port = ip::Port::try_from(1234).unwrap();
     let local = ipv4::Endpoint::new(ALICE_IPV4, port);
 
     // Open and close a connection.
@@ -39,20 +36,42 @@ fn tcp_connection_setup() {
     libos.close(sockfd).unwrap();
 }
 
+#[test]
+fn catnip_tcp_connection_setup() {
+    let (tx, rx) = crossbeam_channel::unbounded();
+    let mut libos = libos_init(ALICE_MAC, ALICE_IPV4, tx, rx);
+
+    do_tcp_connection_setup(&mut libos);
+}
+
+#[test]
+fn posix_tcp_connection_setup() {
+    let (tx, rx) = crossbeam_channel::unbounded();
+    let mut libos = libos_init(ALICE_MAC, ALICE_IPV4, tx, rx);
+
+    libos.use_posix_stack();
+    do_tcp_connection_setup(&mut libos);
+}
+
 //==============================================================================
 // Establish Connection
 //==============================================================================
 
 /// Tests if data can be successfully established.
-#[test]
-fn tcp_establish_connection() {
+fn do_tcp_establish_connection(use_posix: bool) {
+    initialize_logging();
+
     let (alice_tx, alice_rx) = crossbeam_channel::unbounded();
     let (bob_tx, bob_rx) = crossbeam_channel::unbounded();
 
     let alice = thread::spawn(move || {
         let mut libos = libos_init(ALICE_MAC, ALICE_IPV4, alice_tx, bob_rx);
 
-        let port = ip::Port::try_from(80).unwrap();
+        if use_posix {
+            libos.use_posix_stack();
+        }
+
+        let port = ip::Port::try_from(2345).unwrap();
         let local = ipv4::Endpoint::new(ALICE_IPV4, port);
 
         // Open connection.
@@ -72,13 +91,15 @@ fn tcp_establish_connection() {
     let bob = thread::spawn(move || {
         let mut libos = libos_init(BOB_MAC, BOB_IPV4, bob_tx, alice_rx);
 
-        let port = ip::Port::try_from(80).unwrap();
-        let local = ipv4::Endpoint::new(BOB_IPV4, port);
+        if use_posix {
+            libos.use_posix_stack();
+        }
+
+        let port = ip::Port::try_from(2345).unwrap();
         let remote = ipv4::Endpoint::new(ALICE_IPV4, port);
 
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
-        libos.bind(sockfd, local).unwrap();
         let qt = libos.connect(sockfd, remote);
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
@@ -90,20 +111,34 @@ fn tcp_establish_connection() {
     bob.join().unwrap();
 }
 
+#[test]
+fn catnip_tcp_establish_connection() {
+    do_tcp_establish_connection(false)
+}
+
+#[test]
+fn posix_tcp_establish_connection() {
+    do_tcp_establish_connection(true)
+}
+
 //==============================================================================
 // Push
 //==============================================================================
 
 /// Tests if data can be successfully established.
-#[test]
-fn tcp_push_remote() {
+fn do_tcp_push_remote(use_posix: bool) {
+
     let (alice_tx, alice_rx) = crossbeam_channel::unbounded();
     let (bob_tx, bob_rx) = crossbeam_channel::unbounded();
 
     let alice = thread::spawn(move || {
         let mut libos = libos_init(ALICE_MAC, ALICE_IPV4, alice_tx, bob_rx);
 
-        let port = ip::Port::try_from(80).unwrap();
+        if use_posix {
+            libos.use_posix_stack();
+        }
+
+        let port = ip::Port::try_from(3456).unwrap();
         let local = ipv4::Endpoint::new(ALICE_IPV4, port);
 
         // Open connection.
@@ -114,7 +149,7 @@ fn tcp_push_remote() {
         let r = libos.wait(qt);
         assert_eq!(r.qr_opcode, dmtr_opcode_t::DMTR_OPC_ACCEPT);
 
-        // // Pop data.
+        // Pop data.
         let qd = unsafe { r.qr_value.ares.qd } as u32;
         let qt = libos.pop(qd);
         let qr = libos.wait(qt);
@@ -133,8 +168,11 @@ fn tcp_push_remote() {
     let bob = thread::spawn(move || {
         let mut libos = libos_init(BOB_MAC, BOB_IPV4, bob_tx, alice_rx);
 
-        let port = ip::Port::try_from(80).unwrap();
-        let local = ipv4::Endpoint::new(BOB_IPV4, port);
+        if use_posix {
+            libos.use_posix_stack();
+        }
+
+        let port = ip::Port::try_from(3456).unwrap();
         let remote = ipv4::Endpoint::new(ALICE_IPV4, port);
 
         // Open connection.
@@ -156,4 +194,14 @@ fn tcp_push_remote() {
 
     alice.join().unwrap();
     bob.join().unwrap();
+}
+
+#[test]
+fn catnip_tcp_push_remote() {
+    do_tcp_push_remote(false)
+}
+
+#[test]
+fn posix_tcp_push_remote() {
+    do_tcp_push_remote(true)
 }
