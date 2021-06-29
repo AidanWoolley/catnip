@@ -1,8 +1,8 @@
 use crate::{
     engine::{
         Engine,
-        Protocol,
     },
+    protocols::Protocol,
     fail::Fail,
     file_table::FileDescriptor,
     interop::{

@@ -10,6 +10,7 @@ use crate::{
     },
     operations::ResultFuture,
     protocols::{
+        Protocol,
         arp,
         ethernet2::frame::{
             EtherType2,
@@ -47,11 +48,6 @@ pub struct Engine<RT: Runtime> {
     ipv4: ipv4::Peer<RT>,
 
     file_table: FileTable,
-}
-
-pub enum Protocol {
-    Tcp,
-    Udp,
 }
 
 impl<RT: Runtime> Engine<RT> {
