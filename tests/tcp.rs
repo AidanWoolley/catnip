@@ -139,7 +139,6 @@ fn tcp_push_remote() {
 
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
-        libos.bind(sockfd, local).unwrap();
         let qt = libos.connect(sockfd, remote);
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
