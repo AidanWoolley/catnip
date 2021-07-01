@@ -41,6 +41,7 @@ use crate::protocols::ethernet2::MacAddress;
 #[cfg(test)]
 use std::collections::HashMap;
 
+// TODO: Unclear why this itermediate `Engine` struct is needed.
 pub struct Engine<RT: Runtime> {
     rt: RT,
     arp: arp::Peer<RT>,
@@ -72,6 +73,9 @@ impl<RT: Runtime> Engine<RT> {
         &self.rt
     }
 
+    /// New incoming data has arrived. Route it to the correct parse out the Ethernet header and
+    /// allow the correct protocol to handle it. The underlying protocol will futher parse the data
+    /// and inform the correct task that its data has arrived.
     pub fn receive(&mut self, bytes: RT::Buf) -> Result<(), Fail> {
         let (header, payload) = Ethernet2Header::parse(bytes)?;
         debug!("Engine received {:?}", header);

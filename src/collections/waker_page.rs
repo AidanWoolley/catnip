@@ -1,3 +1,7 @@
+//! A "page" is made up of 64 contiguous entries, each entry represents the state of a task/future
+//! in our scheduler. This page is represented by a 64-bit integer where the ith bit corresponds to
+//! the ith task in that page. This way fast bit arithmetic can be used to index into a task's
+//! state and uniquely identify a task among multiple pages.
 use crate::sync::{
     SharedWaker,
     WakerU64,
@@ -20,11 +24,22 @@ use std::{
     },
 };
 
+/// Size of our pages. Should be the same size as the number of bits in the underlying data type
+/// representing our bit vectors.
 pub const WAKER_PAGE_SIZE: usize = 64;
 
+/// A page is used by the scheduler to hold the current status of 64 different futures in the
+/// scheduler. So we use 64bit integers where the ith bit represents the ith future. Pages are
+/// arranged by the scheduler in a `pages` vector of pages which grows as needed allocating space
+/// for 64 more futures at a time.
 #[repr(align(64))]
 pub struct WakerPage {
+    /// We use a single bit for our reference count implying only reference exists per future
+    /// at a time.
     refcount: WakerU64,
+    /// A 64 element bit vector representing the futures for this page which have been notified
+    /// by a wake and are ready to be polled again. The ith bit represents the ith future in the
+    /// corresponding memory slab.
     notified: WakerU64,
     completed: WakerU64,
     dropped: WakerU64,
@@ -55,6 +70,8 @@ impl WakerPage {
         self.waker.wake();
     }
 
+    /// Return a bit vector representing the futures in this page which are ready to be
+    /// polled again.
     pub fn take_notified(&self) -> u64 {
         // Unset all ready bits, since spurious notifications for completed futures would lead
         // us to poll them after completion.
@@ -108,10 +125,13 @@ impl WakerPage {
 pub struct WakerPageRef(NonNull<WakerPage>);
 
 impl WakerPageRef {
-    pub fn raw_waker(&self, ix: usize) -> RawWaker {
-        self.waker(ix).into_raw_waker()
+    /// Get the waker for the future at the `local_index` location on this page.
+    /// 0 <= `local_index` <= 64
+    pub fn raw_waker(&self, local_index: usize) -> RawWaker {
+        self.waker(local_index).into_raw_waker()
     }
 
+    /// Create a new waker using the local index and our WakerPage reference.
     fn waker(&self, ix: usize) -> WakerRef {
         debug_assert!(ix < 64);
 
@@ -192,6 +212,14 @@ impl WakerRef {
         waker
     }
 }
+
+// The following methods are used to implement Waker for WakeRef.
+//
+// While it may look complicated it is just doing standard implementation of the Waker vtable as
+// required by Rust.
+//
+// Ultimately, calling .wake() for our waker just calls [WakerPage::notify] which sets the
+// appropriate bit to 1.
 
 unsafe fn waker_ref_clone(ptr: *const ()) -> RawWaker {
     let p = WakerRef(NonNull::new_unchecked(ptr as *const u8 as *mut u8));

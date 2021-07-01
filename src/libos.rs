@@ -1,3 +1,6 @@
+//! LibOS defines the PDPIX (portable data plane interface) abstraction. PDPIX centers around
+//! the IO Queue abstraction, thus providing a standard interface for different kernel bypass
+//! mechanisms.
 use crate::{
     engine::{
         Engine,
@@ -26,12 +29,12 @@ use std::{
 const TIMER_RESOLUTION: usize = 64;
 const MAX_RECV_ITERS: usize = 2;
 
+/// Queue Token for our IO Queue abstraction. Analogous to a file descriptor in POSIX.
 pub type QToken = u64;
 
 pub struct LibOS<RT: Runtime> {
     engine: Engine<RT>,
     rt: RT,
-
     ts_iters: usize,
 }
 
@@ -49,6 +52,7 @@ impl<RT: Runtime> LibOS<RT> {
         &self.rt
     }
 
+    /// Create a new socket.
     pub fn socket(
         &mut self,
         domain: c_int,
@@ -80,7 +84,7 @@ impl<RT: Runtime> LibOS<RT> {
     ///
     /// **Return Value**
     ///
-    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// Upon successful completion, `Ok(())` is returned. Upon failure, `Fail` is
     /// returned instead.
     ///
     pub fn bind(&mut self, fd: FileDescriptor, local: Endpoint) -> Result<(), Fail> {
@@ -92,7 +96,7 @@ impl<RT: Runtime> LibOS<RT> {
     /// **Brief**
     ///
     /// Marks the socket referred to by `fd` as a socket that will be used to
-    /// accept incoming connection requests using [accept]. The `fd` should
+    /// accept incoming connection requests using [accept](Self::accept). The `fd` should
     /// refer to a socket of type `SOCK_STREAM`. The `backlog` argument defines
     /// the maximum length to which the queue of pending connections for `fd`
     /// may grow. If a connection request arrives when the queue is full, the
@@ -101,7 +105,7 @@ impl<RT: Runtime> LibOS<RT> {
     ///
     /// **Return Value**
     ///
-    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// Upon successful completion, `Ok(())` is returned. Upon failure, `Fail` is
     /// returned instead.
     ///
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
@@ -152,7 +156,7 @@ impl<RT: Runtime> LibOS<RT> {
     ///
     /// **Return Value**
     ///
-    /// Upon successful completion, `Ok()` is returned. Upon failure, `Fail` is
+    /// Upon successful completion, `Ok(())` is returned. Upon failure, `Fail` is
     /// returned instead.
     ///
     pub fn close(&mut self, fd: FileDescriptor) -> Result<(), Fail> {
@@ -160,6 +164,9 @@ impl<RT: Runtime> LibOS<RT> {
         self.engine.close(fd)
     }
 
+    /// Create a push request for Demikernel to asynchronously write data from `sga` to the
+    /// IO connection represented by `fd`. This operation returns immediately with a `QToken`.
+    /// The data has been written when [`wait`ing](Self::wait) on the QToken returns.
     pub fn push(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t) -> Result<QToken, Fail> {
         trace!("push(): fd={:?}", fd);
         let buf = self.rt.clone_sgarray(sga);
@@ -167,6 +174,8 @@ impl<RT: Runtime> LibOS<RT> {
         Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
+    /// Similar to [push](Self::push) but uses a [Runtime]-specific buffer instead of the
+    /// [dmtr_sgarray_t].
     pub fn push2(&mut self, fd: FileDescriptor, buf: RT::Buf) -> Result<QToken, Fail> {
         trace!("push2(): fd={:?}", fd);
         let future = self.engine.push(fd, buf)?;
@@ -194,6 +203,8 @@ impl<RT: Runtime> LibOS<RT> {
         drop(self.rt.scheduler().from_raw_handle(qt).unwrap());
     }
 
+    /// Create a pop request to write data from IO connection represented by `fd` into a buffer
+    /// allocated by the application.
     pub fn pop(&mut self, fd: FileDescriptor) -> Result<QToken, Fail> {
         trace!("pop(): fd={:?}", fd);
         let future = self.engine.pop(fd)?;
@@ -218,22 +229,27 @@ impl<RT: Runtime> LibOS<RT> {
         Some(dmtr_qresult_t::pack(&self.rt, r, qd, qt))
     }
 
+    /// Block until request represented by `qt` is finished returning the results of this request.
     pub fn wait(&mut self, qt: QToken) -> dmtr_qresult_t {
         trace!("wait(): qt={:?}", qt);
-        let (qd, r) = self.wait2(qt);
-        dmtr_qresult_t::pack(&self.rt, r, qd, qt)
+        let (qd, result) = self.wait2(qt);
+        dmtr_qresult_t::pack(&self.rt, result, qd, qt)
     }
 
+    /// Block until request represented by `qt` is finished returning the file descriptor
+    /// representing this request and the results of that operation.
     pub fn wait2(&mut self, qt: QToken) -> (FileDescriptor, OperationResult<RT>) {
         trace!("wait2(): qt={:?}", qt);
         let handle = self.rt.scheduler().from_raw_handle(qt).unwrap();
+
+        // Continously call the scheduler to make progress until the future represented by `qt`
+        // finishes.
         loop {
             self.poll_bg_work();
             if handle.has_completed() {
                 return self.take_operation(handle);
             }
         }
-
     }
 
     pub fn wait_all_pushes(&mut self, qts: &mut Vec<QToken>) {
@@ -241,11 +257,15 @@ impl<RT: Runtime> LibOS<RT> {
         self.poll_bg_work();
         for qt in qts.drain(..) {
             let handle = self.rt.scheduler().from_raw_handle(qt).unwrap();
+            // TODO I don't understand what guarantees that this task will be done by the time we
+            // get here and make this assert true.
             assert!(handle.has_completed());
             must_let!(let (_, OperationResult::Push) = self.take_operation(handle));
         }
     }
 
+    /// Given a list of queue tokens, run all ready tasks and return the first task which has
+    /// finished.
     pub fn wait_any(&mut self, qts: &[QToken]) -> (usize, dmtr_qresult_t) {
         trace!("wait_any(): qts={:?}", qts);
         loop {
@@ -280,14 +300,21 @@ impl<RT: Runtime> LibOS<RT> {
         unimplemented!();
     }
 
+    /// Given a handle representing a task in our scheduler. Return the results of this future
+    /// and the file descriptor for this connection.
+    ///
+    /// This function will panic if the specified future had not completed or is _background_ future.
     fn take_operation(&mut self, handle: SchedulerHandle) -> (FileDescriptor, OperationResult<RT>) {
         match self.rt.scheduler().take(handle) {
             Operation::Tcp(f) => f.expect_result(),
             Operation::Udp(f) => f.expect_result(),
-            Operation::Background(..) => panic!("Polled background operation"),
+            Operation::Background(..) => panic!("`take_operation` attempted on background task!"),
         }
     }
 
+    /// Scheduler will poll all futures that are ready to make progress.
+    /// Then ask the runtime to receive new data which we will forward to the engine to parse and
+    /// route to the correct protocol.
     fn poll_bg_work(&mut self) {
         self.rt.scheduler().poll();
         for _ in 0..MAX_RECV_ITERS {
