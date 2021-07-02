@@ -13,6 +13,17 @@ pub struct ArpMessage<T> {
     pub _body_marker: PhantomData<T>,
 }
 
+impl<T> ArpMessage<T> {
+    /// Creates an ARP message.
+    pub fn new(header: Ethernet2Header, pdu: ArpPdu) -> Self {
+        Self {
+            ethernet2_hdr: header,
+            arp_pdu: pdu,
+            _body_marker: PhantomData,
+        }
+    }
+}
+
 impl<T> PacketBuf<T> for ArpMessage<T> {
     fn header_size(&self) -> usize {
         self.ethernet2_hdr.compute_size() + self.arp_pdu.compute_size()
