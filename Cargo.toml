@@ -35,3 +35,6 @@ async-trait = "0.1.50"
 
 [dev-dependencies]
 criterion = "0.3.4"
+
+[features]
+threadunsafe = []
