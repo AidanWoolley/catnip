@@ -87,7 +87,7 @@ impl<RT: Runtime> Engine<RT> {
     }
 
     pub fn ping(
-        &self,
+        &mut self,
         dest_ipv4_addr: Ipv4Addr,
         timeout: Option<Duration>,
     ) -> impl Future<Output = Result<Duration, Fail>> {

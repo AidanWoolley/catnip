@@ -1,27 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-use std::marker::PhantomData;
+
 use crate::{
-    runtime::RuntimeBuf,
     fail::Fail,
-    protocols::{
-        ethernet2::frame::{
-            Ethernet2Header,
-        },
-        ipv4::datagram::Ipv4Header,
-    },
+    protocols::{ethernet2::frame::Ethernet2Header, ipv4::datagram::Ipv4Header},
     runtime::PacketBuf,
+    runtime::RuntimeBuf,
 };
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-};
-use std::{
-    convert::TryInto,
-};
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use std::{convert::TryInto, marker::PhantomData};
 
 #[allow(unused)]
 const MAX_ICMPV4_DATAGRAM_SIZE: usize = 576;
+
+//==============================================================================
+// Icmpv4Type2
+//==============================================================================
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Icmpv4Type2 {
@@ -46,7 +42,7 @@ impl Icmpv4Type2 {
                 let id = NetworkEndian::read_u16(&rest_of_header[0..2]);
                 let seq_num = NetworkEndian::read_u16(&rest_of_header[2..4]);
                 Ok(EchoReply { id, seq_num })
-            },
+            }
             3 => Ok(DestinationUnreachable),
             4 => Ok(SourceQuench),
             5 => Ok(RedirectMessage),
@@ -54,7 +50,7 @@ impl Icmpv4Type2 {
                 let id = NetworkEndian::read_u16(&rest_of_header[0..2]);
                 let seq_num = NetworkEndian::read_u16(&rest_of_header[2..4]);
                 Ok(EchoRequest { id, seq_num })
-            },
+            }
             9 => Ok(RouterAdvertisement),
             10 => Ok(RouterSolicitation),
             11 => Ok(TimeExceeded),
@@ -85,20 +81,123 @@ impl Icmpv4Type2 {
     }
 }
 
-pub struct Icmpv4Message<T> {
-    pub ethernet2_hdr: Ethernet2Header,
-    pub ipv4_hdr: Ipv4Header,
-    pub icmpv4_hdr: Icmpv4Header,
-    // TODO: Add a body enum when we need it.
+//==============================================================================
+// Icmpv4Header
+//==============================================================================
 
-    pub _body_marker: PhantomData<T>,
+/// Size of ICMPv4 Headers (in bytes)
+const ICMPV4_HEADER_SIZE: usize = 8;
+
+#[derive(Copy, Clone, Debug)]
+pub struct Icmpv4Header {
+    pub icmpv4_type: Icmpv4Type2,
+    // TODO: Turn this into an enum on Icmpv4Type2 and then collapse the struct.
+    pub code: u8,
 }
 
+/// Associate Functions for Icmpv4Header
+impl Icmpv4Header {
+    /// Creates a header for a ICMP Message.
+    pub fn new(icmpv4_type: Icmpv4Type2, code: u8) -> Self {
+        Self { icmpv4_type, code }
+    }
+
+    /// Returns the size of the target ICMPv4 header.
+    fn size(&self) -> usize {
+        ICMPV4_HEADER_SIZE
+    }
+
+    pub fn parse<T: RuntimeBuf>(mut buf: T) -> Result<(Self, T), Fail> {
+        if buf.len() < ICMPV4_HEADER_SIZE {
+            return Err(Fail::Malformed {
+                details: "ICMPv4 datagram too small for header",
+            });
+        }
+        let hdr_buf: &[u8; ICMPV4_HEADER_SIZE] = &buf[..ICMPV4_HEADER_SIZE].try_into().unwrap();
+
+        let type_byte = hdr_buf[0];
+        let code = hdr_buf[1];
+        let checksum = NetworkEndian::read_u16(&hdr_buf[2..4]);
+        if checksum != Self::checksum(hdr_buf, &buf[ICMPV4_HEADER_SIZE..]) {
+            return Err(Fail::Malformed {
+                details: "ICMPv4 checksum mismatch",
+            });
+        }
+        let rest_of_header: &[u8; 4] = hdr_buf[4..8].try_into().unwrap();
+        let icmpv4_type = Icmpv4Type2::parse(type_byte, rest_of_header)?;
+
+        buf.adjust(ICMPV4_HEADER_SIZE);
+        Ok((Self { icmpv4_type, code }, buf))
+    }
+
+    pub fn serialize(&self, buf: &mut [u8]) {
+        let buf: &mut [u8; ICMPV4_HEADER_SIZE] =
+            (&mut buf[..ICMPV4_HEADER_SIZE]).try_into().unwrap();
+        let (type_byte, rest_of_header) = self.icmpv4_type.serialize();
+        buf[0] = type_byte;
+        buf[1] = self.code;
+        // Skip the checksum for now.
+        buf[4..8].copy_from_slice(&rest_of_header[..]);
+        let checksum = Self::checksum(buf, &[]);
+        NetworkEndian::write_u16(&mut buf[2..4], checksum);
+    }
+
+    fn checksum(buf: &[u8; ICMPV4_HEADER_SIZE], body: &[u8]) -> u16 {
+        let mut state = 0xffffu32;
+        state += NetworkEndian::read_u16(&buf[0..2]) as u32;
+        // Skip the checksum.
+        state += 0;
+        state += NetworkEndian::read_u16(&buf[4..6]) as u32;
+        state += NetworkEndian::read_u16(&buf[6..8]) as u32;
+
+        let mut chunks_iter = body.chunks_exact(2);
+        while let Some(chunk) = chunks_iter.next() {
+            state += NetworkEndian::read_u16(chunk) as u32;
+        }
+        if let Some(&b) = chunks_iter.remainder().get(0) {
+            state += NetworkEndian::read_u16(&[b, 0]) as u32;
+        }
+
+        while state > 0xFFFF {
+            state -= 0xFFFF;
+        }
+        !state as u16
+    }
+}
+
+//==============================================================================
+// Icmpv4Message
+//==============================================================================
+
+/// Message for ICMP
+pub struct Icmpv4Message<T> {
+    ethernet2_hdr: Ethernet2Header,
+    ipv4_hdr: Ipv4Header,
+    icmpv4_hdr: Icmpv4Header,
+    _body_marker: PhantomData<T>,
+}
+
+/// Associated Functions for Icmpv4Message
+impl<T> Icmpv4Message<T> {
+    /// Creates an ICMP message.
+    pub fn new(
+        ethernet2_hdr: Ethernet2Header,
+        ipv4_hdr: Ipv4Header,
+        icmpv4_hdr: Icmpv4Header,
+    ) -> Self {
+        Self {
+            ethernet2_hdr,
+            ipv4_hdr,
+            icmpv4_hdr,
+            _body_marker: PhantomData,
+        }
+    }
+}
+
+/// PacketBuf Trait Implementation for Icmpv4Message
 impl<T> PacketBuf<T> for Icmpv4Message<T> {
     fn header_size(&self) -> usize {
-        self.ethernet2_hdr.compute_size()
-            + self.ipv4_hdr.compute_size()
-            + self.icmpv4_hdr.compute_size()
+        self.ethernet2_hdr.compute_size() + self.ipv4_hdr.compute_size() + self.icmpv4_hdr.size()
     }
 
     fn body_size(&self) -> usize {
@@ -108,7 +207,7 @@ impl<T> PacketBuf<T> for Icmpv4Message<T> {
     fn write_header(&self, buf: &mut [u8]) {
         let eth_hdr_size = self.ethernet2_hdr.compute_size();
         let ipv4_hdr_size = self.ipv4_hdr.compute_size();
-        let icmpv4_hdr_size = self.icmpv4_hdr.compute_size();
+        let icmpv4_hdr_size = self.icmpv4_hdr.size();
         let mut cur_pos = 0;
 
         self.ethernet2_hdr
@@ -129,76 +228,4 @@ impl<T> PacketBuf<T> for Icmpv4Message<T> {
     fn take_body(self) -> Option<T> {
         None
     }
-}
-
-pub const ICMPV4_HEADER_SIZE: usize = 8;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Icmpv4Header {
-    pub icmpv4_type: Icmpv4Type2,
-    // TODO: Turn this into an enum on Icmpv4Type2 and then collapse the struct.
-    pub code: u8,
-}
-
-impl Icmpv4Header {
-    fn compute_size(&self) -> usize {
-        ICMPV4_HEADER_SIZE
-    }
-
-    pub fn parse<T: RuntimeBuf>(mut buf: T) -> Result<(Self, T), Fail> {
-        if buf.len() < ICMPV4_HEADER_SIZE {
-            return Err(Fail::Malformed {
-                details: "ICMPv4 datagram too small for header",
-            });
-        }
-        let hdr_buf: &[u8; ICMPV4_HEADER_SIZE] = &buf[..ICMPV4_HEADER_SIZE].try_into().unwrap();
-
-        let type_byte = hdr_buf[0];
-        let code = hdr_buf[1];
-        let checksum = NetworkEndian::read_u16(&hdr_buf[2..4]);
-        if checksum != icmpv4_checksum(hdr_buf, &buf[ICMPV4_HEADER_SIZE..]) {
-            return Err(Fail::Malformed {
-                details: "ICMPv4 checksum mismatch",
-            });
-        }
-        let rest_of_header: &[u8; 4] = hdr_buf[4..8].try_into().unwrap();
-        let icmpv4_type = Icmpv4Type2::parse(type_byte, rest_of_header)?;
-
-        buf.adjust(ICMPV4_HEADER_SIZE);
-        Ok((Self { icmpv4_type, code }, buf))
-    }
-
-    pub fn serialize(&self, buf: &mut [u8]) {
-        let buf: &mut [u8; ICMPV4_HEADER_SIZE] =
-            (&mut buf[..ICMPV4_HEADER_SIZE]).try_into().unwrap();
-        let (type_byte, rest_of_header) = self.icmpv4_type.serialize();
-        buf[0] = type_byte;
-        buf[1] = self.code;
-        // Skip the checksum for now.
-        buf[4..8].copy_from_slice(&rest_of_header[..]);
-        let checksum = icmpv4_checksum(buf, &[]);
-        NetworkEndian::write_u16(&mut buf[2..4], checksum);
-    }
-}
-
-fn icmpv4_checksum(buf: &[u8; ICMPV4_HEADER_SIZE], body: &[u8]) -> u16 {
-    let mut state = 0xffffu32;
-    state += NetworkEndian::read_u16(&buf[0..2]) as u32;
-    // Skip the checksum.
-    state += 0;
-    state += NetworkEndian::read_u16(&buf[4..6]) as u32;
-    state += NetworkEndian::read_u16(&buf[6..8]) as u32;
-
-    let mut chunks_iter = body.chunks_exact(2);
-    while let Some(chunk) = chunks_iter.next() {
-        state += NetworkEndian::read_u16(chunk) as u32;
-    }
-    if let Some(&b) = chunks_iter.remainder().get(0) {
-        state += NetworkEndian::read_u16(&[b, 0]) as u32;
-    }
-
-    while state > 0xFFFF {
-        state -= 0xFFFF;
-    }
-    !state as u16
 }
