@@ -60,10 +60,12 @@ fn tcp_establish_connection() {
         libos.bind(sockfd, local).unwrap();
         libos.listen(sockfd, 8).unwrap();
         let qt = libos.accept(sockfd);
-        assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_ACCEPT);
-
+        let r = libos.wait(qt);
+        assert_eq!(r.qr_opcode, dmtr_opcode_t::DMTR_OPC_ACCEPT);
+        let qd = unsafe { r.qr_value.ares.qd } as u32;
 
         // Close connection.
+        libos.close(qd).unwrap();
         libos.close(sockfd).unwrap();
     });
 
@@ -124,6 +126,7 @@ fn tcp_push_remote() {
         libos.rt().free_sgarray(sga);
 
         // Close connection.
+        libos.close(qd).unwrap();
         libos.close(sockfd).unwrap();
     });
 
@@ -136,7 +139,6 @@ fn tcp_push_remote() {
 
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
-        libos.bind(sockfd, local).unwrap();
         let qt = libos.connect(sockfd, remote);
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
