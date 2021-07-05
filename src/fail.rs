@@ -13,7 +13,7 @@ use std::{
 // allow `&` in type specifications.
 type Str = &'static str;
 
-custom_error! {#[derive(Clone)] pub Fail
+custom_error! {#[derive(Clone, PartialEq)] pub Fail
     ConnectionAborted{} = "connection aborted",
     ConnectionRefused{} = "connection refused",
     IoError {} = "IO Error",
