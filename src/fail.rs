@@ -30,11 +30,11 @@ custom_error! {#[derive(Clone, PartialEq)] pub Fail
     Unsupported{details: Str} = "unsupported ({details})",
     Invalid {details: Str} = "invalid ({details})",
     TooManyOpenedFiles {details: Str} = "too many opened files ({details})",
-    AddressInUse {details: Str} = "address in use ({details})",
-    BadFileDescriptor {details: Str} = "bad file descriptor ({details})",
+    AddressInUse {} = "address in use",
     AddressNotAvailable {} = "address not available",
     AddressFamilySupport {} = "address family not supported",
     SocketTypeSupport {} = "socket type not supported",
+    BadFileDescriptor {} = "bad file descriptor",
 }
 
 impl From<IoError> for Fail {
