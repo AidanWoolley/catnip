@@ -282,8 +282,8 @@ impl<RT: Runtime> LibOS<RT> {
         }
     }
 
-    pub fn is_qd_valid(&self, fd: FileDescriptor) -> bool {
-        self.engine.is_qd_valid(fd)
+    pub fn is_qd_valid(&self, _fd: FileDescriptor) -> bool {
+        unimplemented!();
     }
 
     fn take_operation(&mut self, handle: SchedulerHandle) -> (FileDescriptor, OperationResult<RT>) {

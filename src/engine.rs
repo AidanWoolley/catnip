@@ -181,10 +181,6 @@ impl<RT: Runtime> Engine<RT> {
         }
     }
 
-    pub fn is_qd_valid(&self, fd: FileDescriptor) -> bool {
-        self.file_table.is_valid(fd)
-    }
-
     pub fn close(&mut self, fd: FileDescriptor) -> Result<(), Fail> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.close(fd),
