@@ -179,6 +179,17 @@ impl<RT: Runtime> LibOS<RT> {
         self.rt.scheduler().insert(future).into_raw()
     }
 
+    pub fn pushto(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t, to: Endpoint) -> QToken {
+        let buf = self.rt.clone_sgarray(sga);
+        let future = self.engine.pushto(fd, buf, to);
+        self.rt.scheduler().insert(future).into_raw()
+    }
+
+    pub fn pushto2(&mut self, fd: FileDescriptor, buf: RT::Buf, to: Endpoint) -> QToken {
+        let future = self.engine.pushto(fd, buf, to);
+        self.rt.scheduler().insert(future).into_raw()
+    }
+
     ///
     /// **Brief**
     ///

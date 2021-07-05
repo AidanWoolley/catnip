@@ -296,6 +296,19 @@ impl<RT: Runtime> UdpPeer<RT> {
         }
     }
 
+    pub fn pushto(&self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Result<(), Fail> {
+        let inner = self.inner.borrow();
+        let local = match inner.sockets.get(&fd) {
+            Some(s) if s.local().is_some() => s.local(),
+            _ => {
+                return Err(Fail::Malformed {
+                    details: "Invalid file descriptor on pushto",
+                })
+            },
+        };
+        inner.send_datagram(buf, local, to)
+    }
+
     /// Pops data from a socket.
     pub fn pop(&self, fd: FileDescriptor) -> PopFuture<RT> {
         let inner = self.inner.borrow();
