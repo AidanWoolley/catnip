@@ -32,6 +32,9 @@ custom_error! {#[derive(Clone, PartialEq)] pub Fail
     TooManyOpenedFiles {details: Str} = "too many opened files ({details})",
     AddressInUse {details: Str} = "address in use ({details})",
     BadFileDescriptor {details: Str} = "bad file descriptor ({details})",
+    AddressNotAvailable {} = "address not available",
+    AddressFamilySupport {} = "address family not supported",
+    SocketTypeSupport {} = "socket type not supported",
 }
 
 impl From<IoError> for Fail {
@@ -89,6 +92,9 @@ impl Fail {
             Fail::Invalid { .. } => libc::EINVAL,
             Fail::TooManyOpenedFiles { .. } => libc::EMFILE,
             Fail::AddressInUse { .. } => libc::EADDRINUSE,
+            Fail::AddressNotAvailable { .. } => libc::EADDRNOTAVAIL,
+            Fail::AddressFamilySupport { .. } => libc::EAFNOSUPPORT,
+            Fail::SocketTypeSupport { .. } => libc::ESOCKTNOSUPPORT,
             Fail::BadFileDescriptor { .. } => libc::EBADF,
         }
     }
