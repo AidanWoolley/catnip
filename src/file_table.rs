@@ -47,18 +47,29 @@ impl FileTable {
     pub fn alloc(&self, file: File) -> FileDescriptor {
         let mut inner = self.inner.borrow_mut();
         let ix = inner.table.insert(file);
-        ix as u32 + 1
+        ix as FileDescriptor
     }
 
     /// Gets the file associated with a file descriptor.
     pub fn get(&self, fd: FileDescriptor) -> Option<File> {
         let inner = self.inner.borrow();
-        inner.table.get(ix).cloned()
+
+        if !inner.table.contains(fd as usize) {
+            return None;
+        }
+
+        inner.table.get(fd as usize).cloned()
     }
 
     /// Releases an entry in the target file descriptor table.
+    pub fn free(&self, fd: FileDescriptor) -> Option<File> {
         let mut inner = self.inner.borrow_mut();
-        inner.table.remove(ix)
+
+        if !inner.table.contains(fd as usize) {
+            return None;
+        }
+
+        Some(inner.table.remove(fd as usize))
     }
 }
 
