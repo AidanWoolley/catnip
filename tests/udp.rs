@@ -37,7 +37,7 @@ fn udp_connect_remote() {
     // Open and close a connection.
     let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
     libos.bind(sockfd, local).unwrap();
-    let qt = libos.connect(sockfd, remote);
+    let qt = libos.connect(sockfd, remote).unwrap();
     assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
     libos.close(sockfd).unwrap();
 }
@@ -55,7 +55,7 @@ fn udp_connect_loopback() {
     // Open and close a connection.
     let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
     libos.bind(sockfd, local).unwrap();
-    let qt = libos.connect(sockfd, remote);
+    let qt = libos.connect(sockfd, remote).unwrap();
     assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
     libos.close(sockfd).unwrap();
 }
@@ -81,18 +81,18 @@ fn udp_push_remote() {
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Cook some data.
         let body_sga = libos_cook_data(&mut libos);
 
         // Push data.
-        let qt = libos.push(sockfd, &body_sga);
+        let qt = libos.push(sockfd, &body_sga).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
 
         // Pop data.
-        let qt = libos.pop(sockfd);
+        let qt = libos.pop(sockfd).unwrap();
         let qr = libos.wait(qt);
         assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
 
@@ -117,11 +117,11 @@ fn udp_push_remote() {
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Pop data.
-        let qt = libos.pop(sockfd);
+        let qt = libos.pop(sockfd).unwrap();
         let qr = libos.wait(qt);
         assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
 
@@ -130,7 +130,7 @@ fn udp_push_remote() {
         libos_check_data(sga);
 
         // Push data.
-        let qt = libos.push(sockfd, &sga);
+        let qt = libos.push(sockfd, &sga).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
 
         libos.rt().free_sgarray(sga);
@@ -159,18 +159,18 @@ fn udp_lookback() {
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Cook some data.
         let body_sga = libos_cook_data(&mut libos);
 
         // Push data.
-        let qt = libos.push(sockfd, &body_sga);
+        let qt = libos.push(sockfd, &body_sga).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
 
         // Pop data.
-        let qt = libos.pop(sockfd);
+        let qt = libos.pop(sockfd).unwrap();
         let qr = libos.wait(qt);
         assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
 
@@ -195,11 +195,11 @@ fn udp_lookback() {
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_DGRAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Pop data.
-        let qt = libos.pop(sockfd);
+        let qt = libos.pop(sockfd).unwrap();
         let qr = libos.wait(qt);
         assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
 
@@ -208,7 +208,7 @@ fn udp_lookback() {
         libos_check_data(sga);
 
         // Push data.
-        let qt = libos.push(sockfd, &sga);
+        let qt = libos.push(sockfd, &sga).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
 
         libos.rt().free_sgarray(sga);

@@ -59,7 +59,7 @@ fn tcp_establish_connection() {
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
         libos.listen(sockfd, 8).unwrap();
-        let qt = libos.accept(sockfd);
+        let qt = libos.accept(sockfd).unwrap();
         let r = libos.wait(qt);
         assert_eq!(r.qr_opcode, dmtr_opcode_t::DMTR_OPC_ACCEPT);
         let qd = unsafe { r.qr_value.ares.qd } as u32;
@@ -79,7 +79,7 @@ fn tcp_establish_connection() {
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Close connection.
@@ -110,13 +110,13 @@ fn tcp_push_remote() {
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
         libos.bind(sockfd, local).unwrap();
         libos.listen(sockfd, 8).unwrap();
-        let qt = libos.accept(sockfd);
+        let qt = libos.accept(sockfd).unwrap();
         let r = libos.wait(qt);
         assert_eq!(r.qr_opcode, dmtr_opcode_t::DMTR_OPC_ACCEPT);
 
         // // Pop data.
         let qd = unsafe { r.qr_value.ares.qd } as u32;
-        let qt = libos.pop(qd);
+        let qt = libos.pop(qd).unwrap();
         let qr = libos.wait(qt);
         assert_eq!(qr.qr_opcode, dmtr_opcode_t::DMTR_OPC_POP);
 
@@ -139,14 +139,14 @@ fn tcp_push_remote() {
 
         // Open connection.
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
-        let qt = libos.connect(sockfd, remote);
+        let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_CONNECT);
 
         // Cook some data.
         let body_sga = libos_cook_data(&mut libos);
 
         // Push data.
-        let qt = libos.push(sockfd, &body_sga);
+        let qt = libos.push(sockfd, &body_sga).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_PUSH);
         libos.rt().free_sgarray(body_sga);
 
