@@ -118,16 +118,13 @@ impl<RT: Runtime> LibOS<RT> {
     /// **Return Value**
     ///
     /// Upon successful completion, a queue token is returned. This token can be
-    /// used to wait for a connection request to arrive.
+    /// used to wait for a connection request to arrive. Upon failure, `Fail` is
+    /// returned instead.
     ///
-    ///  **Notes**
-    ///
-    /// -TODO: Fail if connection cannot be established.
-    ///
-    pub fn accept(&mut self, fd: FileDescriptor) -> QToken {
+    pub fn accept(&mut self, fd: FileDescriptor) -> Result<QToken, Fail> {
         trace!("accept(): {:?}", fd);
-        let future = self.engine.accept(fd);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.accept(fd)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
     ///
@@ -139,16 +136,13 @@ impl<RT: Runtime> LibOS<RT> {
     ///
     /// Upon successful completion, a queue token is returned. This token can be
     /// used to push and pop data to/from the queue that connects the local and
-    /// remote endpoints.
+    /// remote endpoints. Upon failure, `Fail` is
+    /// returned instead.
     ///
-    ///  **Notes**
-    ///
-    /// -TODO: Fail if connection cannot be established.
-    ///
-    pub fn connect(&mut self, fd: FileDescriptor, remote: Endpoint) -> QToken {
+    pub fn connect(&mut self, fd: FileDescriptor, remote: Endpoint) -> Result<QToken, Fail> {
         trace!("connect(): fd={:?} remote={:?}", fd, remote);
-        let future = self.engine.connect(fd, remote);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.connect(fd, remote)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
     ///
@@ -166,28 +160,28 @@ impl<RT: Runtime> LibOS<RT> {
         self.engine.close(fd)
     }
 
-    pub fn push(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t) -> QToken {
+    pub fn push(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t) -> Result<QToken, Fail> {
         trace!("push(): fd={:?}", fd);
         let buf = self.rt.clone_sgarray(sga);
-        let future = self.engine.push(fd, buf);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.push(fd, buf)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
-    pub fn push2(&mut self, fd: FileDescriptor, buf: RT::Buf) -> QToken {
+    pub fn push2(&mut self, fd: FileDescriptor, buf: RT::Buf) -> Result<QToken, Fail> {
         trace!("push2(): fd={:?}", fd);
-        let future = self.engine.push(fd, buf);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.push(fd, buf)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
-    pub fn pushto(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t, to: Endpoint) -> QToken {
+    pub fn pushto(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t, to: Endpoint) -> Result<QToken, Fail> {
         let buf = self.rt.clone_sgarray(sga);
-        let future = self.engine.pushto(fd, buf, to);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.pushto(fd, buf, to)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
-    pub fn pushto2(&mut self, fd: FileDescriptor, buf: RT::Buf, to: Endpoint) -> QToken {
-        let future = self.engine.pushto(fd, buf, to);
-        self.rt.scheduler().insert(future).into_raw()
+    pub fn pushto2(&mut self, fd: FileDescriptor, buf: RT::Buf, to: Endpoint) -> Result<QToken, Fail> {
+        let future = self.engine.pushto(fd, buf, to)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
     ///
@@ -200,10 +194,10 @@ impl<RT: Runtime> LibOS<RT> {
         drop(self.rt.scheduler().from_raw_handle(qt).unwrap());
     }
 
-    pub fn pop(&mut self, fd: FileDescriptor) -> QToken {
+    pub fn pop(&mut self, fd: FileDescriptor) -> Result<QToken, Fail> {
         trace!("pop(): fd={:?}", fd);
-        let future = self.engine.pop(fd);
-        self.rt.scheduler().insert(future).into_raw()
+        let future = self.engine.pop(fd)?;
+        Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
     // If this returns a result, `qt` is no longer valid.

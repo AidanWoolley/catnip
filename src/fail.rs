@@ -13,7 +13,7 @@ use std::{
 // allow `&` in type specifications.
 type Str = &'static str;
 
-custom_error! {#[derive(Clone)] pub Fail
+custom_error! {#[derive(Clone, PartialEq)] pub Fail
     ConnectionAborted{} = "connection aborted",
     ConnectionRefused{} = "connection refused",
     IoError {} = "IO Error",
@@ -30,8 +30,11 @@ custom_error! {#[derive(Clone)] pub Fail
     Unsupported{details: Str} = "unsupported ({details})",
     Invalid {details: Str} = "invalid ({details})",
     TooManyOpenedFiles {details: Str} = "too many opened files ({details})",
-    AddressInUse {details: Str} = "address in use ({details})",
-    BadFileDescriptor {details: Str} = "bad file descriptor ({details})",
+    AddressInUse {} = "address in use",
+    AddressNotAvailable {} = "address not available",
+    AddressFamilySupport {} = "address family not supported",
+    SocketTypeSupport {} = "socket type not supported",
+    BadFileDescriptor {} = "bad file descriptor",
 }
 
 impl From<IoError> for Fail {
@@ -89,6 +92,9 @@ impl Fail {
             Fail::Invalid { .. } => libc::EINVAL,
             Fail::TooManyOpenedFiles { .. } => libc::EMFILE,
             Fail::AddressInUse { .. } => libc::EADDRINUSE,
+            Fail::AddressNotAvailable { .. } => libc::EADDRNOTAVAIL,
+            Fail::AddressFamilySupport { .. } => libc::EAFNOSUPPORT,
+            Fail::SocketTypeSupport { .. } => libc::ESOCKTNOSUPPORT,
             Fail::BadFileDescriptor { .. } => libc::EBADF,
         }
     }

@@ -201,9 +201,7 @@ impl<RT: Runtime> UdpPeer<RT> {
             .insert(addr, Rc::new(RefCell::new(listener)))
             .is_some()
         {
-            return Err(Fail::AddressInUse {
-                details: "the given address is alreay in use",
-            });
+            return Err(Fail::AddressInUse {});
         }
 
         Ok(())
@@ -241,9 +239,7 @@ impl<RT: Runtime> UdpPeer<RT> {
         // Remove endpoint biding.
         if let Some(local) = socket.local() {
             if inner.bound.remove(&local).is_none() {
-                return Err(Fail::BadFileDescriptor {
-                    details: "socket is not bound",
-                });
+                return Err(Fail::BadFileDescriptor {});
             }
         }
 
@@ -284,12 +280,8 @@ impl<RT: Runtime> UdpPeer<RT> {
             Some(s) if s.local().is_some() && s.remote().is_some() => {
                 inner.send_datagram(buf, s.local(), s.remote().unwrap())
             }
-            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {
-                details: "remote() endpoint not bound",
-            }),
-            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {
-                details: "remote() endpoint not bound",
-            }),
+            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {}),
+            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {}),
             _ => Err(Fail::Malformed {
                 details: "Invalid file descriptor",
             }),
@@ -304,7 +296,7 @@ impl<RT: Runtime> UdpPeer<RT> {
                 return Err(Fail::Malformed {
                     details: "Invalid file descriptor on pushto",
                 })
-            },
+            }
         };
         inner.send_datagram(buf, local, to)
     }
@@ -316,12 +308,8 @@ impl<RT: Runtime> UdpPeer<RT> {
             Some(s) if s.local().is_some() && s.remote().is_some() => {
                 Ok(inner.bound.get(&s.local().unwrap()).unwrap().clone())
             }
-            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {
-                details: "remote() endpoint not bound",
-            }),
-            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {
-                details: "remote() endpoint not bound",
-            }),
+            Some(s) if s.local().is_some() => Err(Fail::BadFileDescriptor {}),
+            Some(s) if s.remote().is_some() => Err(Fail::BadFileDescriptor {}),
             _ => Err(Fail::Malformed {
                 details: "Invalid file descriptor",
             }),

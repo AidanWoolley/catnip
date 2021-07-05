@@ -105,14 +105,14 @@ impl<RT: Runtime> Engine<RT> {
         &mut self,
         fd: FileDescriptor,
         remote_endpoint: ipv4::Endpoint,
-    ) -> Operation<RT> {
+    ) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
-            Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint)),
+            Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint))),
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::<RT>::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
-                Operation::Udp(udp_op)
+                Ok(Operation::Udp(udp_op))
             },
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
@@ -120,45 +120,42 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.bind(fd, endpoint),
             Some(File::UdpSocket) => self.ipv4.udp.bind(fd, endpoint),
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
-    pub fn accept(&mut self, fd: FileDescriptor) -> Operation<RT> {
+    pub fn accept(&mut self, fd: FileDescriptor) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
-            Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.accept(fd)),
-            _ => panic!("TODO: Invalid fd"),
+            Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.accept(fd))),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.listen(fd, backlog),
-            Some(File::UdpSocket) => Err(Fail::Malformed {
-                details: "Operation not supported",
-            }),
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
-    pub fn push(&mut self, fd: FileDescriptor, buf: RT::Buf) -> Operation<RT> {
+    pub fn push(&mut self, fd: FileDescriptor, buf: RT::Buf) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
-            Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.push(fd, buf)),
+            Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.push(fd, buf))),
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Push(fd, self.ipv4.udp.push(fd, buf));
-                Operation::Udp(udp_op)
+                Ok(Operation::Udp(udp_op))
             },
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
-    pub fn pushto(&mut self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Operation<RT> {
+    pub fn pushto(&mut self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Push(fd, self.ipv4.udp.pushto(fd, buf, to));
-                Operation::Udp(udp_op)
+                Ok(Operation::Udp(udp_op))
             },
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
@@ -170,14 +167,14 @@ impl<RT: Runtime> Engine<RT> {
         self.ipv4.udp.pop(fd)
     }
 
-    pub fn pop(&mut self, fd: FileDescriptor) -> Operation<RT> {
+    pub fn pop(&mut self, fd: FileDescriptor) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
-            Some(File::TcpSocket) => Operation::from(self.ipv4.tcp.pop(fd)),
+            Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.pop(fd))),
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Pop(ResultFuture::new(self.ipv4.udp.pop(fd)));
-                Operation::Udp(udp_op)
+               Ok(Operation::Udp(udp_op))
             },
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
@@ -185,7 +182,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.close(fd),
             Some(File::UdpSocket) => self.ipv4.udp.close(fd),
-            _ => panic!("TODO: Invalid fd"),
+            _ => Err(Fail::BadFileDescriptor{}),
         }
     }
 
