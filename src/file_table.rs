@@ -1,29 +1,41 @@
-use slab::Slab;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
 
+use slab::Slab;
+use std::{cell::RefCell, rc::Rc};
+
+//==============================================================================
+// Constants & Structures
+//==============================================================================
+
+/// File Descriptor
 pub type FileDescriptor = u32;
 
+/// File Table Data
+struct Inner {
+    table: Slab<File>,
+}
+
+/// File Table
 #[derive(Clone)]
 pub struct FileTable {
     inner: Rc<RefCell<Inner>>,
 }
 
+/// File Types
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum File {
     TcpSocket,
     UdpSocket,
 }
 
-impl Default for FileTable {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+//==============================================================================
+// Associate Functions
+//==============================================================================
 
+/// Associate functions for [FileTable].
 impl FileTable {
+    /// Creates a file table.
     pub fn new() -> Self {
         let inner = Inner { table: Slab::new() };
         Self {
@@ -31,25 +43,32 @@ impl FileTable {
         }
     }
 
+    /// Allocates a new entry in the target file descriptor table.
     pub fn alloc(&self, file: File) -> FileDescriptor {
         let mut inner = self.inner.borrow_mut();
         let ix = inner.table.insert(file);
         ix as u32 + 1
     }
 
+    /// Gets the file associated with a file descriptor.
     pub fn get(&self, fd: FileDescriptor) -> Option<File> {
-        let ix = fd as usize - 1;
         let inner = self.inner.borrow();
         inner.table.get(ix).cloned()
     }
 
-    pub fn free(&self, fd: FileDescriptor) -> File {
-        let ix = fd as usize - 1;
+    /// Releases an entry in the target file descriptor table.
         let mut inner = self.inner.borrow_mut();
         inner.table.remove(ix)
     }
 }
 
-struct Inner {
-    table: Slab<File>,
+//==============================================================================
+// Trait Implementations
+//==============================================================================
+
+/// Default trait implementation for [FileTable].
+impl Default for FileTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
