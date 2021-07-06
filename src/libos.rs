@@ -66,6 +66,12 @@ impl<RT: Runtime> LibOS<RT> {
         socket_type: c_int,
         _protocol: c_int,
     ) -> Result<FileDescriptor, Fail> {
+        trace!(
+            "socket(): domain={:?} type={:?} protocol={:?}",
+            domain,
+            socket_type,
+            _protocol
+        );
         if domain != libc::AF_INET {
             return Err(Fail::AddressFamilySupport {});
         }
