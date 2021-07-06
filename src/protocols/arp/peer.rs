@@ -33,7 +33,6 @@ use std::{
 ///
 /// Arp Peer
 /// - TODO: Allow multiple waiters for the same address
-/// - TODO: Deregister waiters here when the receiver goes away.
 #[derive(Clone)]
 pub struct ArpPeer<RT: Runtime> {
     rt: RT,
@@ -62,6 +61,11 @@ impl<RT: Runtime> ArpPeer<RT> {
         };
 
         Ok(peer)
+    }
+
+    /// Drops a waiter for a target IP address.
+    fn do_drop(&mut self, ipv4_addr: Ipv4Addr) {
+        self.waiters.borrow_mut().remove(&ipv4_addr);
     }
 
     fn do_insert(&mut self, ipv4_addr: Ipv4Addr, link_addr: MacAddress) -> Option<MacAddress> {
@@ -210,21 +214,27 @@ impl<RT: Runtime> ArpPeer<RT> {
             // from TCP/IP illustrated, chapter 4:
             // > The frequency of the ARP request is very close to one per
             // > second, the maximum suggested by [RFC1122].
-            for i in 0..arp_options.retry_count + 1 {
-                rt.transmit(msg.clone());
-                let timer = rt.wait(arp_options.request_timeout);
+            let result = {
+                for i in 0..arp_options.retry_count + 1 {
+                    rt.transmit(msg.clone());
+                    let timer = rt.wait(arp_options.request_timeout);
 
-                match arp_response.with_timeout(timer).await {
-                    Ok(link_addr) => {
-                        debug!("ARP result available ({})", link_addr);
-                        return Ok(link_addr);
-                    }
-                    Err(_) => {
-                        warn!("ARP request timeout; attempt {}.", i + 1);
+                    match arp_response.with_timeout(timer).await {
+                        Ok(link_addr) => {
+                            debug!("ARP result available ({})", link_addr);
+                            return Ok(link_addr);
+                        }
+                        Err(_) => {
+                            warn!("ARP request timeout; attempt {}.", i + 1);
+                        }
                     }
                 }
-            }
-            Err(Fail::Timeout {})
+                Err(Fail::Timeout {})
+            };
+
+            arp.do_drop(ipv4_addr);
+
+            result
         }
     }
 
