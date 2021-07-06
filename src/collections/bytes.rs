@@ -37,6 +37,15 @@ impl RuntimeBuf for Bytes {
         Self::default()
     }
 
+    fn from_slice(src: &[u8]) -> Self {
+        let buf: Arc<[u8]> = src.into();
+        Self {
+            buf: Some(buf),
+            offset: 0,
+            len: src.len(),
+        }
+    }
+
     /// Drops the first `n` bytes of the target buffer.
     fn adjust(&mut self, n: usize) {
         if n > self.len {
