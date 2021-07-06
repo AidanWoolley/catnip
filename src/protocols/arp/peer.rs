@@ -18,8 +18,8 @@ use crate::{
     scheduler::SchedulerHandle,
 };
 use futures::{
-    FutureExt,
     channel::oneshot::{channel, Receiver, Sender},
+    FutureExt,
 };
 use std::{
     cell::RefCell,
@@ -77,7 +77,7 @@ impl<RT: Runtime> ArpPeer<RT> {
 
     fn do_wait_link_addr(&mut self, ipv4_addr: Ipv4Addr) -> impl Future<Output = MacAddress> {
         let (tx, rx): (Sender<MacAddress>, Receiver<MacAddress>) = channel();
-         if let Some(&link_addr) = self.cache.borrow().get(ipv4_addr) {
+        if let Some(&link_addr) = self.cache.borrow().get(ipv4_addr) {
             let _ = tx.send(link_addr);
         } else {
             assert!(
