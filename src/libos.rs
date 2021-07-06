@@ -139,8 +139,10 @@ impl<RT: Runtime> LibOS<RT> {
     ///
     pub fn accept(&mut self, fd: FileDescriptor) -> Result<QToken, Fail> {
         trace!("accept(): {:?}", fd);
-        let future = self.engine.accept(fd)?;
-        Ok(self.rt.scheduler().insert(future).into_raw())
+        match self.engine.accept(fd) {
+            Ok(future) => Ok(self.rt.scheduler().insert(future).into_raw()),
+            Err(fail) => Err(fail),
+        }
     }
 
     ///
