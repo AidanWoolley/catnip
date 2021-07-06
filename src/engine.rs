@@ -3,38 +3,19 @@
 
 use crate::{
     fail::Fail,
-    file_table::{
-        File,
-        FileDescriptor,
-        FileTable,
-    },
+    file_table::{File, FileDescriptor, FileTable},
     operations::ResultFuture,
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         ipv4,
-        tcp::operations::{
-            AcceptFuture,
-            ConnectFuture,
-            PopFuture,
-            PushFuture,
-        },
-        udp::{
-            UdpPopFuture,
-            UdpOperation,
-        }
+        tcp::operations::{AcceptFuture, ConnectFuture, PopFuture, PushFuture},
+        udp::{UdpOperation, UdpPopFuture},
     },
     runtime::Runtime,
     scheduler::Operation,
 };
-use std::{
-    future::Future,
-    net::Ipv4Addr,
-    time::Duration,
-};
+use std::{future::Future, net::Ipv4Addr, time::Duration};
 
 #[cfg(test)]
 use crate::protocols::ethernet2::MacAddress;
@@ -111,12 +92,15 @@ impl<RT: Runtime> Engine<RT> {
         remote_endpoint: ipv4::Endpoint,
     ) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
-            Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint))),
+            Some(File::TcpSocket) => {
+                Ok(Operation::from(self.ipv4.tcp.connect(fd, remote_endpoint)))
+            }
             Some(File::UdpSocket) => {
-                let udp_op = UdpOperation::<RT>::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
+                let udp_op =
+                    UdpOperation::<RT>::Connect(fd, self.ipv4.udp.connect(fd, remote_endpoint));
                 Ok(Operation::Udp(udp_op))
-            },
-            _ => Err(Fail::BadFileDescriptor{}),
+            }
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
@@ -124,21 +108,21 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.bind(fd, endpoint),
             Some(File::UdpSocket) => self.ipv4.udp.bind(fd, endpoint),
-            _ => Err(Fail::BadFileDescriptor{}),
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
     pub fn accept(&mut self, fd: FileDescriptor) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.accept(fd))),
-            _ => Err(Fail::BadFileDescriptor{}),
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.listen(fd, backlog),
-            _ => Err(Fail::BadFileDescriptor{}),
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
@@ -148,18 +132,23 @@ impl<RT: Runtime> Engine<RT> {
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Push(fd, self.ipv4.udp.push(fd, buf));
                 Ok(Operation::Udp(udp_op))
-            },
-            _ => Err(Fail::BadFileDescriptor{}),
+            }
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
-    pub fn pushto(&mut self, fd: FileDescriptor, buf: RT::Buf, to: ipv4::Endpoint) -> Result<Operation<RT>, Fail> {
+    pub fn pushto(
+        &mut self,
+        fd: FileDescriptor,
+        buf: RT::Buf,
+        to: ipv4::Endpoint,
+    ) -> Result<Operation<RT>, Fail> {
         match self.file_table.get(fd) {
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Push(fd, self.ipv4.udp.pushto(fd, buf, to));
                 Ok(Operation::Udp(udp_op))
-            },
-            _ => Err(Fail::BadFileDescriptor{}),
+            }
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
@@ -176,9 +165,9 @@ impl<RT: Runtime> Engine<RT> {
             Some(File::TcpSocket) => Ok(Operation::from(self.ipv4.tcp.pop(fd))),
             Some(File::UdpSocket) => {
                 let udp_op = UdpOperation::Pop(ResultFuture::new(self.ipv4.udp.pop(fd)));
-               Ok(Operation::Udp(udp_op))
-            },
-            _ => Err(Fail::BadFileDescriptor{}),
+                Ok(Operation::Udp(udp_op))
+            }
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
@@ -186,7 +175,7 @@ impl<RT: Runtime> Engine<RT> {
         match self.file_table.get(fd) {
             Some(File::TcpSocket) => self.ipv4.tcp.close(fd),
             Some(File::UdpSocket) => self.ipv4.udp.close(fd),
-            _ => Err(Fail::BadFileDescriptor{}),
+            _ => Err(Fail::BadFileDescriptor {}),
         }
     }
 
