@@ -29,7 +29,9 @@ impl SharedWaker {
         Self(Rc::new(WakerSlot(UnsafeCell::new(None))))
     }
 
-    pub fn register(&self, waker: &Waker) {
+    // TODO: It seems this method is never used? I don't understand how the shared waker works then
+    // TOOD: since no waker is ever actually called.
+    fn register(&self, waker: &Waker) {
         let s = unsafe {
             let waker = &self.0;
             let cell = &waker.0;

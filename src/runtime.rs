@@ -50,8 +50,11 @@ pub trait PacketBuf<T>: Sized {
     fn take_body(self) -> Option<T>;
 }
 
+/// Common interface that tranport layers should implement? E.g. DPDK and RDMA.
 pub trait Runtime: Clone + Unpin + 'static {
     type Buf: RuntimeBuf;
+    type WaitFuture: Future<Output = ()>;
+
     #[allow(clippy::wrong_self_convention)]
     fn into_sgarray(&self, buf: Self::Buf) -> dmtr_sgarray_t;
     fn alloc_sgarray(&self, size: usize) -> dmtr_sgarray_t;
@@ -68,7 +71,6 @@ pub trait Runtime: Clone + Unpin + 'static {
     fn tcp_options(&self) -> tcp::Options;
     fn udp_options(&self) -> udp::Options;
 
-    type WaitFuture: Future<Output = ()>;
     fn wait(&self, duration: Duration) -> Self::WaitFuture;
     fn wait_until(&self, when: Instant) -> Self::WaitFuture;
     fn now(&self) -> Instant;
