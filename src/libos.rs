@@ -66,6 +66,12 @@ impl<RT: Runtime> LibOS<RT> {
         socket_type: c_int,
         _protocol: c_int,
     ) -> Result<FileDescriptor, Fail> {
+        trace!(
+            "socket(): domain={:?} type={:?} protocol={:?}",
+            domain,
+            socket_type,
+            _protocol
+        );
         if domain != libc::AF_INET {
             return Err(Fail::Invalid {
                 details: "Invalid domain",
@@ -116,7 +122,7 @@ impl<RT: Runtime> LibOS<RT> {
     /// returned instead.
     ///
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
-        trace!{"listen(): fd={:?} backlog={:?}", fd, backlog}
+        trace!("listen(): fd={:?} backlog={:?}", fd, backlog);
         self.engine.listen(fd, backlog)
     }
 
