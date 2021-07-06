@@ -92,7 +92,12 @@ impl<RT: Runtime> LibOS<RT> {
     /// returned instead.
     ///
     pub fn listen(&mut self, fd: FileDescriptor, backlog: usize) -> Result<(), Fail> {
-        trace!{"listen(): fd={:?} backlog={:?}", fd, backlog}
+        trace!("listen(): fd={:?} backlog={:?}", fd, backlog);
+        if backlog == 0 {
+            return Err(Fail::Invalid {
+                details: "backlog length",
+            });
+        }
         self.engine.listen(fd, backlog)
     }
 
