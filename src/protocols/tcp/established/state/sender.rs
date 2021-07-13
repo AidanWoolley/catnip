@@ -1,4 +1,7 @@
-use super::rto::RtoCalculator;
+use super::{
+    rto::RtoCalculator,
+    congestion_ctrl as cc
+};
 use crate::{
     collections::watched::WatchedValue,
     fail::Fail,
@@ -6,6 +9,7 @@ use crate::{
     runtime::{Runtime, RuntimeBuf},
 };
 use std::{
+    boxed::Box,
     cell::RefCell,
     collections::VecDeque,
     convert::TryInto,
@@ -44,7 +48,7 @@ pub struct Sender<RT: Runtime> {
     //               base_seq_no               sent_seq_no           unsent_seq_no
     //                    v                         v                      v
     // ... ---------------|-------------------------|----------------------| (unavailable)
-    //       acknowleged         unacknowledged     ^        unsent
+    //       acknowledged        unacknowledged     ^        unsent
     //
     pub base_seq_no: WatchedValue<SeqNumber>,
     pub unacked_queue: RefCell<VecDeque<UnackedSegment<RT>>>,
@@ -60,6 +64,8 @@ pub struct Sender<RT: Runtime> {
 
     pub retransmit_deadline: WatchedValue<Option<Instant>>,
     pub rto: RefCell<RtoCalculator>,
+
+    pub congestion_ctrl: Box<dyn cc::CongestionControl<RT>>,
 }
 
 impl<RT: Runtime> fmt::Debug for Sender<RT> {
@@ -78,7 +84,7 @@ impl<RT: Runtime> fmt::Debug for Sender<RT> {
 }
 
 impl<RT: Runtime> Sender<RT> {
-    pub fn new(seq_no: SeqNumber, window_size: u32, window_scale: u8, mss: usize) -> Self {
+    pub fn new(seq_no: SeqNumber, window_size: u32, window_scale: u8, mss: usize, cc_constructor: cc::CongestionControlConstructor<RT>, congestion_control_options: Option<cc::Options>) -> Self {
         Self {
             state: WatchedValue::new(SenderState::Open),
 
@@ -94,6 +100,8 @@ impl<RT: Runtime> Sender<RT> {
 
             retransmit_deadline: WatchedValue::new(None),
             rto: RefCell::new(RtoCalculator::new()),
+
+            congestion_ctrl: cc_constructor(mss, seq_no, congestion_control_options),
         }
     }
 
@@ -113,8 +121,19 @@ impl<RT: Runtime> Sender<RT> {
         let Wrapping(sent_data) = sent_seq - base_seq;
 
         // Fast path: Try to send the data immediately.
-        if win_sz > 0 && win_sz >= sent_data + buf_len {
+        let in_flight_after_send = sent_data + buf_len;
+
+        // Before we get cwnd for the check, we prompt it to shrink it if the connection has been idle
+        self.congestion_ctrl.on_cwnd_check_before_send(&self);
+        let cwnd = self.congestion_ctrl.get_cwnd();
+        // The limited transmit algorithm can increase the effective size of cwnd by up to 2MSS
+        let effective_cwnd = cwnd + self.congestion_ctrl.get_limited_transmit_cwnd_increase();
+
+        if win_sz > 0 && win_sz >= in_flight_after_send && effective_cwnd >= in_flight_after_send {
             if let Some(remote_link_addr) = cb.arp.try_query(cb.remote.address()) {
+                // This hook is primarily intended to record the last time we sent data, so we can later tell if the connection has been idle
+                self.congestion_ctrl.on_send(&self, sent_data);
+
                 let mut header = cb.tcp_header();
                 header.seq_num = sent_seq;
                 cb.emit(header, buf.clone(), remote_link_addr);
@@ -175,8 +194,9 @@ impl<RT: Runtime> Sender<RT> {
                 details: "ACK is outside of send window",
             });
         }
+
+        self.congestion_ctrl.on_ack_received(&self, ack_seq_no);
         if bytes_acknowledged == Wrapping(0) {
-            // TODO: Handle fast retransmit here.
             return Ok(());
         }
 
@@ -210,6 +230,11 @@ impl<RT: Runtime> Sender<RT> {
             }
         }
         self.base_seq_no.modify(|b| b + bytes_acknowledged);
+        let new_base_seq_no = self.base_seq_no.get();
+        if new_base_seq_no < base_seq_no {
+            // We've wrapped around, and so we need to do some bookkeeping
+            self.congestion_ctrl.on_base_seq_no_wraparound(&self);
+        }
 
         Ok(())
     }

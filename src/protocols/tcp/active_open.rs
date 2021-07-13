@@ -202,7 +202,14 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
             local_window_scale, remote_window_scale
         );
 
-        let sender = Sender::new(expected_seq, tx_window_size, remote_window_scale, mss);
+        let sender = Sender::new(
+            expected_seq,
+            tx_window_size,
+            remote_window_scale,
+            mss,
+            tcp_options.congestion_ctrl_type,
+            tcp_options.congestion_ctrl_options
+        );
         let receiver = Receiver::new(remote_seq_num, rx_window_size, local_window_scale);
         let cb = ControlBlock {
             local: self.local,

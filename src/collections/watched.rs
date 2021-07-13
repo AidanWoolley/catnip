@@ -57,6 +57,11 @@ impl<T: Copy> WatchedValue<T> {
         self.modify(|_| new_value)
     }
 
+    pub fn set_without_notify(&self, new_value: T) {
+        let mut inner = self.inner.borrow_mut();
+        inner.value = new_value;
+    }
+
     pub fn modify(&self, f: impl FnOnce(T) -> T) {
         let mut inner = self.inner.borrow_mut();
         inner.value = f(inner.value);
@@ -78,17 +83,24 @@ impl<T: Copy> WatchedValue<T> {
             task: None,
             state: WatchState::Unregistered,
         };
-        let future = WatchFuture {
+        let future = WatchFuture::Completable(
+            WatchFutureInner {
             watch: self,
             wait_node: ListNode::new(watch_entry),
-        };
+            }
+        );
         (value, future)
     }
 }
 
-pub struct WatchFuture<'a, T> {
+pub struct WatchFutureInner<'a, T> {
     watch: &'a WatchedValue<T>,
-    wait_node: ListNode<WatchEntry>,
+    wait_node: ListNode<WatchEntry>
+}
+
+pub enum WatchFuture<'a, T> {
+    Completable(WatchFutureInner<'a, T>),
+    Pending
 }
 
 impl<'a, T> Future for WatchFuture<'a, T> {
@@ -96,53 +108,63 @@ impl<'a, T> Future for WatchFuture<'a, T> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         let mut_self = unsafe { Pin::get_unchecked_mut(self) };
-        let wait_node = &mut mut_self.wait_node;
-
-        match wait_node.state {
-            WatchState::Unregistered => {
-                wait_node.task = Some(cx.waker().clone());
-                wait_node.state = WatchState::Registered;
-                unsafe {
-                    mut_self
-                        .watch
-                        .inner
-                        .borrow_mut()
-                        .waiters
-                        .add_front(wait_node)
-                };
-                Poll::Pending
-            },
-            WatchState::Registered => {
-                match mut_self.wait_node.task {
-                    Some(ref w) if w.will_wake(cx.waker()) => (),
-                    _ => {
-                        mut_self.wait_node.task = Some(cx.waker().clone());
+        match mut_self {
+            Self::Pending => Poll::Pending,
+            Self::Completable(inner) => {
+                let wait_node = &mut inner.wait_node;
+                let watch = inner.watch;
+                match wait_node.state {
+                    WatchState::Unregistered => {
+                        wait_node.task = Some(cx.waker().clone());
+                        wait_node.state = WatchState::Registered;
+                        unsafe {
+                            watch
+                                .inner
+                                .borrow_mut()
+                                .waiters
+                                .add_front(wait_node)
+                        };
+                        Poll::Pending
+                    },
+                    WatchState::Registered => {
+                        match wait_node.task {
+                            Some(ref w) if w.will_wake(cx.waker()) => (),
+                            _ => wait_node.task = Some(cx.waker().clone())
+                        }
+                        Poll::Pending
+                    },
+                    WatchState::Completed { ref mut polled } => {
+                        *polled = true;
+                        Poll::Ready(())
                     },
                 }
-                Poll::Pending
-            },
-            WatchState::Completed { ref mut polled } => {
-                *polled = true;
-                Poll::Ready(())
-            },
+            }
         }
     }
 }
 
 impl<'a, T> FusedFuture for WatchFuture<'a, T> {
     fn is_terminated(&self) -> bool {
-        self.wait_node.state == WatchState::Completed { polled: true }
+        match self {
+            Self::Pending => false,
+            Self::Completable(inner) => inner.wait_node.state == WatchState::Completed { polled: true }
+        }
     }
 }
 
 impl<'a, T> Drop for WatchFuture<'a, T> {
     fn drop(&mut self) {
-        if let WatchState::Registered = self.wait_node.state {
-            let mut inner = self.watch.inner.borrow_mut();
-            if !unsafe { inner.waiters.remove(&mut self.wait_node) } {
+        match self {
+            Self::Pending => (),
+            Self::Completable(inner) => {
+                if let WatchState::Registered = inner.wait_node.state {
+                    let mut inner_inner = inner.watch.inner.borrow_mut();
+                    if !unsafe { inner_inner.waiters.remove(&mut inner.wait_node) } {
                 panic!("Future could not be removed from wait queue");
             }
-            self.wait_node.state = WatchState::Unregistered;
+                    inner.wait_node.state = WatchState::Unregistered;
+                }
+            }
         }
     }
 }

@@ -88,7 +88,7 @@ impl TestRuntime {
             false,
         );
 
-        let tcp_options = tcp::Options::default();
+        let tcp_options = tcp::Options::<Self>::default();
         let tcp_options = tcp_options.advertised_mss(2048);
         let tcp_options = tcp_options.window_scale(2);
 
@@ -133,7 +133,7 @@ struct Inner {
 
     link_addr: MacAddress,
     ipv4_addr: Ipv4Addr,
-    tcp_options: tcp::Options,
+    tcp_options: tcp::Options<TestRuntime>,
     arp_options: arp::Options,
 }
 
@@ -233,7 +233,7 @@ impl Runtime for TestRuntime {
         self.inner.borrow().ipv4_addr
     }
 
-    fn tcp_options(&self) -> tcp::Options {
+    fn tcp_options(&self) -> tcp::Options<TestRuntime> {
         self.inner.borrow().tcp_options.clone()
     }
 

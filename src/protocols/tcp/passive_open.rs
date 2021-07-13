@@ -195,6 +195,8 @@ impl<RT: Runtime> PassiveSocket<RT> {
                 remote_window_size,
                 remote_window_scale,
                 mss,
+                tcp_options.congestion_ctrl_type,
+                tcp_options.congestion_ctrl_options
             );
             let receiver = Receiver::new(
                 remote_isn + Wrapping(1),

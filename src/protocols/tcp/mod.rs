@@ -18,4 +18,5 @@ pub type SeqNumber = Wrapping<u32>;
 pub use self::{
     options::TcpOptions as Options,
     peer::Peer,
+    established::state::congestion_ctrl as congestion_ctrl
 };
