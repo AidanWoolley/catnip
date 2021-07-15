@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::{
     constants::FALLBACK_MSS,
     established::state::{receiver::Receiver, sender::Sender, ControlBlock},

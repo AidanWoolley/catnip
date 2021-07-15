@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::{
     collections::watched::WatchedValue, fail::Fail, protocols::tcp::SeqNumber, runtime::Runtime,
 };

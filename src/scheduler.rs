@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 //! Implementation of our efficient, single-threaded task scheduler.
 //!
 //! Our scheduler holds [Operation]s in a memory slab for short

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::{
     collections::bytes::BytesMut,
     protocols::{ip, ipv4},

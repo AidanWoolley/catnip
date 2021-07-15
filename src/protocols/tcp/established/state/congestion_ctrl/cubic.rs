@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::super::sender::Sender;
 use super::{
     CongestionControl, FastRetransmitRecovery, LimitedTransmit, Options,

@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::sender::Sender;
 use crate::{collections::watched::WatchFuture, protocols::tcp::SeqNumber, runtime::Runtime};
 use std::fmt::Debug;

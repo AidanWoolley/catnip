@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use std::{cell::UnsafeCell, mem, rc::Rc, task::Waker};
 
 struct WakerSlot(UnsafeCell<Option<Waker>>);

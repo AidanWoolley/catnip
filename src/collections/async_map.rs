@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use futures::task::AtomicWaker;
 use pin_project::pin_project;
 use std::collections::HashMap;

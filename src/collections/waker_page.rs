@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 //! A "page" is made up of 64 contiguous entries, each entry represents the state of a task/future
 //! in our scheduler. This page is represented by a 64-bit integer where the ith bit corresponds to
 //! the ith task in that page. This way fast bit arithmetic can be used to index into a task's

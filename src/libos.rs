@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 //! LibOS defines the PDPIX (portable data plane interface) abstraction. PDPIX centers around
 //! the IO Queue abstraction, thus providing a standard interface for different kernel bypass
 //! mechanisms.

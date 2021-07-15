@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::{fail::Fail, protocols::ethernet2::MacAddress, runtime::RuntimeBuf};
 use byteorder::{ByteOrder, NetworkEndian};
 use num_traits::FromPrimitive;

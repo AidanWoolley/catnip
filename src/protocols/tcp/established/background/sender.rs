@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::super::state::{sender::UnackedSegment, ControlBlock};
 use crate::{fail::Fail, runtime::Runtime};
 use futures::FutureExt;

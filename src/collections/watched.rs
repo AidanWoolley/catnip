@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use futures::future::FusedFuture;
 use futures_intrusive::intrusive_double_linked_list::{LinkedList, ListNode};
 use std::{

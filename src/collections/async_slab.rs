@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::waker_page::{WakerPage, WakerPageRef, WAKER_PAGE_SIZE};
 use futures::task::AtomicWaker;
 use gen_iter::gen_iter;

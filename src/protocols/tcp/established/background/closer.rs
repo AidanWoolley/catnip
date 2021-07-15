@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 //! Defines functions to be called during the TCP connection termination process.
 
 use super::super::state::{receiver::ReceiverState, sender::SenderState, ControlBlock};

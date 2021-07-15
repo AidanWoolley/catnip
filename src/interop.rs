@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 #![allow(non_camel_case_types)]
 
 use crate::{file_table::FileDescriptor, operations::OperationResult, runtime::Runtime};

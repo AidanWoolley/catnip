@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::{fail::Fail, runtime::RuntimeBuf};
 use byteorder::{ByteOrder, NetworkEndian};
 use num_traits::FromPrimitive;

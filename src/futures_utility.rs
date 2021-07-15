@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::fail::Fail;
 use async_trait::async_trait;
 use futures::future::FusedFuture;

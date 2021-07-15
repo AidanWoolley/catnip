@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::{congestion_ctrl as cc, rto::RtoCalculator};
 use crate::{
     collections::watched::WatchedValue,
