@@ -15,5 +15,5 @@ Cargo.lock
 
 # IDEs
 .vscode/tasks.json
-.swo
-.swp
+*.swo
+*.swp
