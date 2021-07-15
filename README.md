@@ -2,6 +2,8 @@ Catnip
 =======
 
 [![Join us on Slack!](https://img.shields.io/badge/chat-on%20Slack-e01563.svg)](https://join.slack.com/t/demikernel/shared_invite/zt-t25ffjf9-2k7Y_594T8xn1GBWVYlQ2g)
+[![Build](https://github.com/demikernel/catnip/actions/workflows/build.yml/badge.svg)](https://github.com/demikernel/catnip/actions/workflows/build.yml)
+[![Test](https://github.com/demikernel/catnip/actions/workflows/test.yml/badge.svg)](https://github.com/demikernel/catnip/actions/workflows/test.yml)
 
 _Catnip_ is a TCP/IP stack that focuses on being an embeddable, low-latency
 solution for user-space networking.
