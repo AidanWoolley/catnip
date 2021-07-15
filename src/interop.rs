@@ -1,18 +1,8 @@
 #![allow(non_camel_case_types)]
 
-use crate::{
-    file_table::FileDescriptor,
-    operations::OperationResult,
-    runtime::Runtime,
-};
-use libc::{
-    c_int,
-    c_void,
-    sockaddr_in,
-};
-use std::{
-    mem,
-};
+use crate::{file_table::FileDescriptor, operations::OperationResult, runtime::Runtime};
+use libc::{c_int, c_void, sockaddr_in};
+use std::mem;
 
 pub type dmtr_qtoken_t = u64;
 
@@ -67,7 +57,12 @@ pub struct dmtr_qresult_t {
 }
 
 impl dmtr_qresult_t {
-    pub fn pack<RT: Runtime>(rt: &RT, result: OperationResult<RT>, qd: FileDescriptor, qt: u64) -> Self {
+    pub fn pack<RT: Runtime>(
+        rt: &RT,
+        result: OperationResult<RT>,
+        qd: FileDescriptor,
+        qt: u64,
+    ) -> Self {
         match result {
             OperationResult::Connect => Self {
                 qr_opcode: dmtr_opcode_t::DMTR_OPC_CONNECT,
@@ -89,7 +84,7 @@ impl dmtr_qresult_t {
                     qr_qt: qt,
                     qr_value,
                 }
-            },
+            }
             OperationResult::Push => Self {
                 qr_opcode: dmtr_opcode_t::DMTR_OPC_PUSH,
                 qr_qd: qd as c_int,
@@ -109,7 +104,7 @@ impl dmtr_qresult_t {
                     qr_qt: qt,
                     qr_value,
                 }
-            },
+            }
             OperationResult::Failed(e) => {
                 warn!("Operation Failed: {:?}", e);
                 Self {
@@ -118,7 +113,7 @@ impl dmtr_qresult_t {
                     qr_qt: qt,
                     qr_value: unsafe { mem::zeroed() },
                 }
-            },
+            }
         }
     }
 }

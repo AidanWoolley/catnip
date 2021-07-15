@@ -3,35 +3,22 @@ pub mod receiver;
 mod rto;
 pub mod sender;
 
-use self::{
-    receiver::Receiver,
-    sender::Sender,
-};
+use self::{receiver::Receiver, sender::Sender};
 use crate::{
     fail::Fail,
     protocols::{
         arp,
         ethernet2::{
-            frame::{
-                EtherType2,
-                Ethernet2Header,
-            },
+            frame::{EtherType2, Ethernet2Header},
             MacAddress,
         },
         ipv4,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
-        tcp::segment::{
-            TcpHeader,
-            TcpSegment,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
+        tcp::segment::{TcpHeader, TcpSegment},
     },
     runtime::Runtime,
 };
 use std::time::Duration;
-
 
 /// Transmission control block for representing our TCP connection.
 pub struct ControlBlock<RT: Runtime> {

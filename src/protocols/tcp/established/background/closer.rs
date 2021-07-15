@@ -1,19 +1,12 @@
 //! Defines functions to be called during the TCP connection termination process.
 
-use super::super::state::{
-    receiver::ReceiverState,
-    sender::SenderState,
-    ControlBlock,
-};
+use super::super::state::{receiver::ReceiverState, sender::SenderState, ControlBlock};
 use crate::{
     fail::Fail,
     runtime::{Runtime, RuntimeBuf},
 };
 use futures::FutureExt;
-use std::{
-    num::Wrapping,
-    rc::Rc,
-};
+use std::{num::Wrapping, rc::Rc};
 
 /// Await until our state changes to `ReceivedFin`. Then sends an ACK for the received FIN.
 async fn sender_ack_fin<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
@@ -55,7 +48,7 @@ async fn sender_send_fin<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fai
             SenderState::Open | SenderState::SentFin | SenderState::FinAckd => {
                 sender_st_changed.await;
                 continue;
-            },
+            }
             SenderState::Closed => {
                 // Wait for `sent_seq_no` to catch up to `unsent_seq_no` and
                 // then send a FIN segment.
@@ -75,14 +68,14 @@ async fn sender_send_fin<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fai
                 cb.emit(header, RT::Buf::empty(), remote_link_addr);
 
                 cb.sender.state.set(SenderState::SentFin);
-            },
+            }
             SenderState::Reset => {
                 let remote_link_addr = cb.arp.query(cb.remote.address()).await?;
                 let mut header = cb.tcp_header();
                 header.rst = true;
                 cb.emit(header, RT::Buf::empty(), remote_link_addr);
                 return Err(Fail::ConnectionAborted {});
-            },
+            }
         }
     }
 }

@@ -1,17 +1,8 @@
-use crate::{
-    fail::Fail,
-    runtime::RuntimeBuf,
-};
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-};
+use crate::{fail::Fail, runtime::RuntimeBuf};
+use byteorder::{ByteOrder, NetworkEndian};
 use num_traits::FromPrimitive;
 use std::{
-    convert::{
-        TryFrom,
-        TryInto,
-    },
+    convert::{TryFrom, TryInto},
     net::Ipv4Addr,
 };
 

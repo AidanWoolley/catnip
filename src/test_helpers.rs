@@ -1,60 +1,34 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-use arrayvec::ArrayVec;
-use std::slice;
-use std::ptr;
-use std::collections::HashMap;
-use std::mem;
 use crate::interop::{dmtr_sgarray_t, dmtr_sgaseg_t};
 use crate::{
+    collections::bytes::{Bytes, BytesMut},
     engine::Engine,
-    protocols::{
-        arp,
-        ethernet2::MacAddress,
-        tcp,
-        udp,
-    },
-    runtime::{
-        PacketBuf,
-        Runtime,
-        RECEIVE_BATCH_SIZE,
-    },
-    scheduler::{
-        Operation,
-        Scheduler,
-        SchedulerHandle,
-    },
-    collections::bytes::{
-        Bytes,
-        BytesMut,
-    },
-    timer::{
-        Timer,
-        TimerRc,
-    },
+    protocols::{arp, ethernet2::MacAddress, tcp, udp},
+    runtime::{PacketBuf, Runtime, RECEIVE_BATCH_SIZE},
+    scheduler::{Operation, Scheduler, SchedulerHandle},
+    timer::{Timer, TimerRc},
 };
+use arrayvec::ArrayVec;
 use futures::FutureExt;
 use rand::{
-    distributions::{
-        Distribution,
-        Standard,
-    },
+    distributions::{Distribution, Standard},
     rngs::SmallRng,
     seq::SliceRandom,
-    Rng,
-    SeedableRng,
+    Rng, SeedableRng,
 };
+use std::collections::HashMap;
+use std::mem;
+use std::ptr;
+use std::slice;
 use std::{
     cell::RefCell,
     collections::VecDeque,
     future::Future,
     net::Ipv4Addr,
     rc::Rc,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 pub const RECEIVE_WINDOW_SIZE: usize = 1024;

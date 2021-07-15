@@ -2,57 +2,33 @@
 // Licensed under the MIT license.
 
 use super::{
-    active_open::ActiveOpenSocket,
-    established::EstablishedSocket,
-    isn_generator::IsnGenerator,
+    active_open::ActiveOpenSocket, established::EstablishedSocket, isn_generator::IsnGenerator,
     passive_open::PassiveSocket,
 };
 use crate::{
-    runtime::RuntimeBuf,
     fail::Fail,
-    file_table::{
-        File,
-        FileDescriptor,
-        FileTable,
-    },
+    file_table::{File, FileDescriptor, FileTable},
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         ip,
         ip::port::EphemeralPorts,
         ipv4,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
         tcp::{
-            operations::{
-                AcceptFuture,
-                ConnectFuture,
-                ConnectFutureState,
-                PopFuture,
-                PushFuture,
-            },
-            segment::{
-                TcpHeader,
-                TcpSegment,
-            },
+            operations::{AcceptFuture, ConnectFuture, ConnectFutureState, PopFuture, PushFuture},
+            segment::{TcpHeader, TcpSegment},
         },
     },
     runtime::Runtime,
+    runtime::RuntimeBuf,
 };
 use futures::channel::mpsc;
 use std::collections::HashMap;
 use std::{
     cell::RefCell,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
     time::Duration,
 };
 
@@ -88,7 +64,7 @@ impl<RT: Runtime> Peer<RT> {
             Some(Socket::Inactive { ref mut local }) => {
                 *local = Some(addr);
                 Ok(())
-            },
+            }
             _ => Err(Fail::Malformed {
                 details: "Invalid file descriptor",
             }),
@@ -107,7 +83,7 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Invalid file descriptor",
                 })
-            },
+            }
         };
         // TODO: Should this move to bind?
         if inner.passive.contains_key(&local) {
@@ -136,7 +112,7 @@ impl<RT: Runtime> Peer<RT> {
                 return Poll::Ready(Err(Fail::Malformed {
                     details: "Socket not listening",
                 }))
-            },
+            }
             None => return Poll::Ready(Err(Fail::Malformed { details: "Bad FD" })),
         };
         let passive = inner
@@ -184,10 +160,7 @@ impl<RT: Runtime> Peer<RT> {
             let local_port = inner.ephemeral_ports.alloc()?;
             let local = ipv4::Endpoint::new(inner.rt.local_ipv4_addr(), local_port);
 
-            let socket = Socket::Connecting {
-                local,
-                remote,
-            };
+            let socket = Socket::Connecting { local, remote };
             inner.sockets.insert(fd, socket);
 
             let local_isn = inner.isn_generator.generate(&local, &remote);
@@ -221,7 +194,7 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
@@ -240,7 +213,7 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Recv: Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
@@ -259,17 +232,17 @@ impl<RT: Runtime> Peer<RT> {
                 return Poll::Ready(Err(Fail::Malformed {
                     details: "pool_recv(): socket connecting",
                 }))
-            },
-            Some(Socket::Inactive{ .. }) => {
+            }
+            Some(Socket::Inactive { .. }) => {
                 return Poll::Ready(Err(Fail::Malformed {
                     details: "pool_recv(): socket inactive",
                 }))
-            },
-            Some(Socket::Listening{ .. }) => {
+            }
+            Some(Socket::Listening { .. }) => {
                 return Poll::Ready(Err(Fail::Malformed {
                     details: "pool_recv(): socket listening",
                 }))
-            },
+            }
             None => return Poll::Ready(Err(Fail::Malformed { details: "Bad FD" })),
         };
         match inner.established.get(&key) {
@@ -307,16 +280,14 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
             Some(ref s) => s.send(buf),
-            None => {
-                Err(Fail::Malformed {
-                    details: "Socket not established",
-                })
-            },
+            None => Err(Fail::Malformed {
+                details: "Socket not established",
+            }),
         }
     }
 
@@ -331,13 +302,13 @@ impl<RT: Runtime> Peer<RT> {
                         return Err(Fail::Malformed {
                             details: "Socket not established",
                         })
-                    },
+                    }
                 }
-            },
+            }
             Some(..) => {
                 // TODO: Implement close for listening sockets.
                 // unimplemented!();
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         }
         Ok(())
@@ -351,16 +322,14 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.remote_mss()),
-            None => {
-                Err(Fail::Malformed {
-                    details: "Socket not established",
-                })
-            },
+            None => Err(Fail::Malformed {
+                details: "Socket not established",
+            }),
         }
     }
 
@@ -372,16 +341,14 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.current_rto()),
-            None => {
-                Err(Fail::Malformed {
-                    details: "Socket not established",
-                })
-            },
+            None => Err(Fail::Malformed {
+                details: "Socket not established",
+            }),
         }
     }
 
@@ -393,16 +360,14 @@ impl<RT: Runtime> Peer<RT> {
                 return Err(Fail::Malformed {
                     details: "Socket not established",
                 })
-            },
+            }
             None => return Err(Fail::Malformed { details: "Bad FD" }),
         };
         match inner.established.get(&key) {
             Some(ref s) => Ok(s.endpoints()),
-            None => {
-                Err(Fail::Malformed {
-                    details: "Socket not established",
-                })
-            },
+            None => Err(Fail::Malformed {
+                details: "Socket not established",
+            }),
         }
     }
 }
@@ -503,11 +468,12 @@ impl<RT: Runtime> Inner<RT> {
 
     fn send_rst(&mut self, local: &ipv4::Endpoint, remote: &ipv4::Endpoint) -> Result<(), Fail> {
         // TODO: Make this work pending on ARP resolution if needed.
-        let remote_link_addr =
-            self.arp
-                .try_query(remote.addr).ok_or(Fail::ResourceNotFound {
-                    details: "RST destination not in ARP cache",
-                })?;
+        let remote_link_addr = self
+            .arp
+            .try_query(remote.addr)
+            .ok_or(Fail::ResourceNotFound {
+                details: "RST destination not in ARP cache",
+            })?;
 
         let mut tcp_hdr = TcpHeader::new(local.port, remote.port);
         tcp_hdr.rst = true;
@@ -539,7 +505,7 @@ impl<RT: Runtime> Inner<RT> {
                 return Poll::Ready(Err(Fail::Malformed {
                     details: "Socket not connecting",
                 }))
-            },
+            }
             None => return Poll::Ready(Err(Fail::Malformed { details: "Bad FD" })),
         };
 
@@ -550,7 +516,7 @@ impl<RT: Runtime> Inner<RT> {
                     return Poll::Ready(Err(Fail::Malformed {
                         details: "Socket not connecting",
                     }))
-                },
+                }
             };
             match socket.poll_result(context) {
                 Poll::Pending => return Poll::Pending,

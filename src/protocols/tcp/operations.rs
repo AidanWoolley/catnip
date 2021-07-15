@@ -1,14 +1,8 @@
-use super::peer::{
-    Inner,
-    Peer,
-};
+use super::peer::{Inner, Peer};
 use crate::{
     fail::Fail,
     file_table::FileDescriptor,
-    operations::{
-        OperationResult,
-        ResultFuture,
-    },
+    operations::{OperationResult, ResultFuture},
     runtime::Runtime,
 };
 use std::{
@@ -17,10 +11,7 @@ use std::{
     future::Future,
     pin::Pin,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 
 pub enum TcpOperation<RT: Runtime> {

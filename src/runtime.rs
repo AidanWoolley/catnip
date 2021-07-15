@@ -1,38 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 use crate::{
-    protocols::{
-        arp,
-        ethernet2::MacAddress,
-        tcp,
-        udp,
-    },
-    scheduler::{
-        Operation,
-        Scheduler,
-        SchedulerHandle,
-    },
     interop::dmtr_sgarray_t,
+    protocols::{arp, ethernet2::MacAddress, tcp, udp},
+    scheduler::{Operation, Scheduler, SchedulerHandle},
 };
 use arrayvec::ArrayVec;
-use rand::distributions::{
-    Distribution,
-    Standard,
-};
+use rand::distributions::{Distribution, Standard};
 use std::{
     fmt::Debug,
     future::Future,
     net::Ipv4Addr,
-    time::{
-        Duration,
-        Instant,
-    },
     ops::Deref,
+    time::{Duration, Instant},
 };
 
 pub const RECEIVE_BATCH_SIZE: usize = 4;
 
-pub trait RuntimeBuf: Clone + Debug + Deref<Target=[u8]> + Sized + Unpin {
+pub trait RuntimeBuf: Clone + Debug + Deref<Target = [u8]> + Sized + Unpin {
     fn empty() -> Self;
 
     fn from_slice(bytes: &[u8]) -> Self;

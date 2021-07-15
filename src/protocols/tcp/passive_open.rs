@@ -1,42 +1,25 @@
 use super::{
     constants::FALLBACK_MSS,
-    established::state::{
-        receiver::Receiver,
-        sender::Sender,
-        ControlBlock,
-    },
+    established::state::{receiver::Receiver, sender::Sender, ControlBlock},
     isn_generator::IsnGenerator,
 };
 use crate::{
     fail::Fail,
-    runtime::RuntimeBuf,
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         ipv4,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
         tcp::{
-            segment::{
-                TcpHeader,
-                TcpOptions2,
-                TcpSegment,
-            },
+            segment::{TcpHeader, TcpOptions2, TcpSegment},
             SeqNumber,
         },
     },
     runtime::Runtime,
+    runtime::RuntimeBuf,
     scheduler::SchedulerHandle,
 };
-use std::collections::{
-    HashMap,
-    HashSet,
-};
+use std::collections::{HashMap, HashSet};
 use std::{
     cell::RefCell,
     collections::VecDeque,
@@ -44,11 +27,7 @@ use std::{
     future::Future,
     num::Wrapping,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 
@@ -73,12 +52,16 @@ impl<RT: Runtime> ReadySockets<RT> {
     fn push_ok(&mut self, cb: ControlBlock<RT>) {
         assert!(self.endpoints.insert(cb.remote));
         self.ready.push_back(Ok(cb));
-        if let Some(w) = self.waker.take() { w.wake() }
+        if let Some(w) = self.waker.take() {
+            w.wake()
+        }
     }
 
     fn push_err(&mut self, err: Fail) {
         self.ready.push_back(Err(err));
-        if let Some(w) = self.waker.take() { w.wake() }
+        if let Some(w) = self.waker.take() {
+            w.wake()
+        }
     }
 
     fn poll(&mut self, ctx: &mut Context) -> Poll<Result<ControlBlock<RT>, Fail>> {
@@ -87,7 +70,7 @@ impl<RT: Runtime> ReadySockets<RT> {
             None => {
                 self.waker.replace(ctx.waker().clone());
                 return Poll::Pending;
-            },
+            }
         };
         if let Ok(ref cb) = r {
             assert!(self.endpoints.remove(&cb.remote));
@@ -196,7 +179,7 @@ impl<RT: Runtime> PassiveSocket<RT> {
                 remote_window_scale,
                 mss,
                 tcp_options.congestion_ctrl_type,
-                tcp_options.congestion_ctrl_options
+                tcp_options.congestion_ctrl_options,
             );
             let receiver = Receiver::new(
                 remote_isn + Wrapping(1),
@@ -247,11 +230,11 @@ impl<RT: Runtime> PassiveSocket<RT> {
                 TcpOptions2::WindowScale(w) => {
                     info!("Received window scale: {:?}", w);
                     remote_window_scale = Some(*w);
-                },
+                }
                 TcpOptions2::MaximumSegmentSize(m) => {
                     info!("Received advertised MSS: {}", m);
                     mss = *m as usize;
-                },
+                }
                 _ => continue,
             }
         }
@@ -287,7 +270,7 @@ impl<RT: Runtime> PassiveSocket<RT> {
                     Err(e) => {
                         warn!("ARP query failed: {:?}", e);
                         continue;
-                    },
+                    }
                 };
                 let mut tcp_hdr = TcpHeader::new(local.port, remote.port);
                 tcp_hdr.syn = true;

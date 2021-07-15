@@ -1,9 +1,6 @@
 use crate::{
     collections::bytes::BytesMut,
-    protocols::{
-        ip,
-        ipv4,
-    },
+    protocols::{ip, ipv4},
     runtime::Runtime,
     test_helpers,
 };
@@ -13,14 +10,8 @@ use std::{
     convert::TryFrom,
     future::Future,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
-    time::{
-        Duration,
-        Instant,
-    },
+    task::{Context, Poll},
+    time::{Duration, Instant},
 };
 
 #[test]
@@ -94,7 +85,6 @@ fn test_connect() {
     bob.receive(alice.rt().pop_frame()).unwrap();
     bob.rt().poll_scheduler();
 }
-
 
 // pub fn one_send_recv_round(
 //     ctx: &mut Context,

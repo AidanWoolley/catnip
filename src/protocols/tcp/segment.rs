@@ -2,30 +2,18 @@
 // Licensed under the MIT license.
 use crate::{
     fail::Fail,
-    runtime::RuntimeBuf,
     protocols::{
-        ethernet2::frame::{
-            Ethernet2Header,
-        },
+        ethernet2::frame::Ethernet2Header,
         ip,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
         tcp::SeqNumber,
     },
     runtime::PacketBuf,
+    runtime::RuntimeBuf,
 };
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-    ReadBytesExt,
-};
+use byteorder::{ByteOrder, NetworkEndian, ReadBytesExt};
 use std::{
-    convert::{
-        TryFrom,
-        TryInto,
-    },
+    convert::{TryFrom, TryInto},
     io::Cursor,
     num::Wrapping,
 };
@@ -125,24 +113,24 @@ impl TcpOptions2 {
             NoOperation => {
                 buf[0] = 1;
                 1
-            },
+            }
             MaximumSegmentSize(mss) => {
                 buf[0] = 2;
                 buf[1] = 4;
                 NetworkEndian::write_u16(&mut buf[2..4], *mss);
                 4
-            },
+            }
             WindowScale(scale) => {
                 buf[0] = 3;
                 buf[1] = 3;
                 buf[2] = *scale;
                 3
-            },
+            }
             SelectiveAcknowlegementPermitted => {
                 buf[0] = 4;
                 buf[1] = 2;
                 2
-            },
+            }
             SelectiveAcknowlegement { num_sacks, sacks } => {
                 buf[0] = 5;
                 buf[1] = 2 + 8 * *num_sacks as u8;
@@ -157,7 +145,7 @@ impl TcpOptions2 {
                     );
                 }
                 2 + 8 * num_sacks
-            },
+            }
             Timestamp {
                 sender_timestamp,
                 echo_timestamp,
@@ -167,7 +155,7 @@ impl TcpOptions2 {
                 NetworkEndian::write_u32(&mut buf[2..6], *sender_timestamp);
                 NetworkEndian::write_u32(&mut buf[6..10], *echo_timestamp);
                 10
-            },
+            }
         }
     }
 }
@@ -306,7 +294,7 @@ impl TcpHeader {
                         }
                         let mss = option_rdr.read_u16::<NetworkEndian>()?;
                         TcpOptions2::MaximumSegmentSize(mss)
-                    },
+                    }
                     3 => {
                         let option_length = option_rdr.read_u8()?;
                         if option_length != 3 {
@@ -316,7 +304,7 @@ impl TcpHeader {
                         }
                         let window_scale = option_rdr.read_u8()?;
                         TcpOptions2::WindowScale(window_scale)
-                    },
+                    }
                     4 => {
                         let option_length = option_rdr.read_u8()?;
                         if option_length != 2 {
@@ -325,7 +313,7 @@ impl TcpHeader {
                             });
                         }
                         TcpOptions2::SelectiveAcknowlegementPermitted
-                    },
+                    }
                     5 => {
                         let option_length = option_rdr.read_u8()?;
                         let num_sacks = match option_length {
@@ -334,7 +322,7 @@ impl TcpHeader {
                                 return Err(Fail::Malformed {
                                     details: "Invalid SACK size",
                                 })
-                            },
+                            }
                         };
                         let mut sacks = [SelectiveAcknowlegement {
                             begin: Wrapping(0),
@@ -345,7 +333,7 @@ impl TcpHeader {
                             s.end = Wrapping(option_rdr.read_u32::<NetworkEndian>()?);
                         }
                         TcpOptions2::SelectiveAcknowlegement { num_sacks, sacks }
-                    },
+                    }
                     8 => {
                         let option_length = option_rdr.read_u8()?;
                         if option_length != 10 {
@@ -359,12 +347,12 @@ impl TcpHeader {
                             sender_timestamp,
                             echo_timestamp,
                         }
-                    },
+                    }
                     _ => {
                         return Err(Fail::Malformed {
                             details: "Invalid TCP option",
                         })
-                    },
+                    }
                 };
                 if num_options >= option_list.len() {
                     return Err(Fail::Malformed {

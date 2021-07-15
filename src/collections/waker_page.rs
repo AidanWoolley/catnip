@@ -2,26 +2,13 @@
 //! in our scheduler. This page is represented by a 64-bit integer where the ith bit corresponds to
 //! the ith task in that page. This way fast bit arithmetic can be used to index into a task's
 //! state and uniquely identify a task among multiple pages.
-use crate::sync::{
-    SharedWaker,
-    WakerU64,
-};
+use crate::sync::{SharedWaker, WakerU64};
 use std::{
-    alloc::{
-        Global,
-        Allocator,
-        Layout,
-    },
+    alloc::{Allocator, Global, Layout},
     mem,
     ops::Deref,
-    ptr::{
-        self,
-        NonNull,
-    },
-    task::{
-        RawWaker,
-        RawWakerVTable,
-    },
+    ptr::{self, NonNull},
+    task::{RawWaker, RawWakerVTable},
 };
 
 /// Size of our pages. Should be the same size as the number of bits in the underlying data type
@@ -52,7 +39,8 @@ impl WakerPage {
     pub fn new(waker: SharedWaker) -> WakerPageRef {
         let layout = Layout::new::<WakerPage>();
         assert_eq!(layout.align(), 64);
-        let mut ptr: NonNull<WakerPage> = Global.allocate(layout).expect("Allocation failed").cast();
+        let mut ptr: NonNull<WakerPage> =
+            Global.allocate(layout).expect("Allocation failed").cast();
         unsafe {
             let page = ptr.as_mut();
             ptr::write(&mut page.refcount as *mut _, WakerU64::new(1));
@@ -271,10 +259,7 @@ impl Drop for WakerRef {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        SharedWaker,
-        WakerPage,
-    };
+    use super::{SharedWaker, WakerPage};
     use std::mem;
 
     #[test]

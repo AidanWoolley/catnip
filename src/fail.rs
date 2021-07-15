@@ -3,11 +3,7 @@
 
 use custom_error::custom_error;
 use float_duration;
-use std::{
-    cell::BorrowMutError,
-    io::Error as IoError,
-    num::TryFromIntError,
-};
+use std::{cell::BorrowMutError, io::Error as IoError, num::TryFromIntError};
 
 // the following type alias is needed because the `custom_error!` macro doesn't
 // allow `&` in type specifications.

@@ -1,24 +1,20 @@
 use super::super::state::ControlBlock;
-use crate::{
-    fail::Fail,
-    runtime::Runtime,
-};
+use crate::{fail::Fail, runtime::Runtime};
 use futures::{
-    future::{
-        self,
-        Either,
-    },
+    future::{self, Either},
     FutureExt,
 };
 use std::rc::Rc;
 
 pub enum RetransmitCause {
     TimeOut,
-    FastRetransmit
+    FastRetransmit,
 }
- 
 
-pub async fn retransmit<RT: Runtime>(cause: RetransmitCause, cb: &Rc<ControlBlock<RT>>) -> Result<(), Fail>{
+pub async fn retransmit<RT: Runtime>(
+    cause: RetransmitCause,
+    cb: &Rc<ControlBlock<RT>>,
+    ) -> Result<(), Fail> {
     // Our retransmission timer fired, so we need to resend a packet.
     let remote_link_addr = cb.arp.query(cb.remote.address()).await?;
 
@@ -36,7 +32,7 @@ pub async fn retransmit<RT: Runtime>(cause: RetransmitCause, cb: &Rc<ControlBloc
     // NOTE: Congestion Control Don't think we record a failure on Fast Retransmit, but can't find a definitive source.
     match cause {
         RetransmitCause::TimeOut => rto.record_failure(),
-        RetransmitCause::FastRetransmit => ()
+        RetransmitCause::FastRetransmit => (),
     };
 
     // Unset the initial timestamp so we don't use this for RTT estimation.
@@ -59,7 +55,8 @@ pub async fn retransmitter<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, F
 
         // I assume any change to the fast retransmit flag is an instruction to transmit, because I use `set_without_notify` to change it
         // back to false (which I am acutely aware is hack...).
-        let (_rtx_fast_retransmit, rtx_fast_retransmit_changed) = cb.sender.congestion_ctrl.watch_retransmit_now_flag();
+        let (_rtx_fast_retransmit, rtx_fast_retransmit_changed) =
+            cb.sender.congestion_ctrl.watch_retransmit_now_flag();
         futures::pin_mut!(rtx_fast_retransmit_changed);
 
         let rtx_future = match rtx_deadline {

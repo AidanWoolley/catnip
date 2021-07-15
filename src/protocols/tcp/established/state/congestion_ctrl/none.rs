@@ -1,24 +1,20 @@
 use super::{
-    CongestionControl,
-    Options,
+    CongestionControl, FastRetransmitRecovery, LimitedTransmit, Options,
     SlowStartCongestionAvoidance,
-    FastRetransmitRecovery,
-    LimitedTransmit,
 };
-use crate::{
-    protocols::tcp::SeqNumber,
-    runtime::Runtime
-};
-use std::{
-    fmt::Debug
-};
+use crate::{protocols::tcp::SeqNumber, runtime::Runtime};
+use std::fmt::Debug;
 
 // Implementation of congestion control which does nothing.
 #[derive(Debug)]
 pub struct None {}
 
 impl<RT: Runtime> CongestionControl<RT> for None {
-    fn new(_mss: usize, _seq_no: SeqNumber, _options: Option<Options>) -> Box<dyn CongestionControl<RT>> {
+    fn new(
+        _mss: usize,
+        _seq_no: SeqNumber,
+        _options: Option<Options>,
+    ) -> Box<dyn CongestionControl<RT>> {
         Box::new(Self {})
     }
 }

@@ -4,10 +4,7 @@ use crate::{
     runtime::{Runtime, RuntimeBuf},
 };
 use futures::{
-    future::{
-        self,
-        Either,
-    },
+    future::{self, Either},
     FutureExt,
 };
 use std::rc::Rc;

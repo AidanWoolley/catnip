@@ -1,27 +1,18 @@
 mod background;
 pub mod state;
 
-use self::{
-    background::background,
-    state::ControlBlock,
-};
+use self::{background::background, state::ControlBlock};
 use crate::{
     fail::Fail,
     file_table::FileDescriptor,
-    protocols::{
-        ipv4,
-        tcp::segment::TcpHeader,
-    },
+    protocols::{ipv4, tcp::segment::TcpHeader},
     runtime::Runtime,
     scheduler::SchedulerHandle,
 };
 use futures::channel::mpsc;
 use std::{
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
     time::Duration,
 };
 

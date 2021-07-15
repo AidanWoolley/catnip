@@ -1,18 +1,7 @@
-use super::super::state::{
-    sender::UnackedSegment,
-    ControlBlock,
-};
-use crate::{
-    fail::Fail,
-    runtime::Runtime,
-};
+use super::super::state::{sender::UnackedSegment, ControlBlock};
+use crate::{fail::Fail, runtime::Runtime};
 use futures::FutureExt;
-use std::{
-    cmp,
-    num::Wrapping,
-    rc::Rc,
-    time::Duration,
-};
+use std::{cmp, num::Wrapping, rc::Rc, time::Duration};
 
 pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
     'top: loop {
@@ -81,12 +70,17 @@ pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
         futures::pin_mut!(base_seq_changed);
 
         // Before we get cwnd for the check, we prompt it to shrink it if the connection has been idle
-        cb.sender.congestion_ctrl.on_cwnd_check_before_send(&cb.sender);
+        cb.sender
+            .congestion_ctrl
+            .on_cwnd_check_before_send(&cb.sender);
         let (cwnd, cwnd_changed) = cb.sender.congestion_ctrl.watch_cwnd();
         futures::pin_mut!(cwnd_changed);
 
         // The limited transmit algorithm may increase the effective size of cwnd by up to 2 * mss
-        let (ltci, ltci_changed) = cb.sender.congestion_ctrl.watch_limited_transmit_cwnd_increase();
+        let (ltci, ltci_changed) = cb
+            .sender
+            .congestion_ctrl
+            .watch_limited_transmit_cwnd_increase();
         futures::pin_mut!(ltci_changed);
 
         let effective_cwnd = cwnd + ltci;
@@ -109,7 +103,10 @@ pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
         let remote_link_addr = cb.arp.query(cb.remote.address()).await?;
 
         // Form an outgoing packet.
-        let max_size = cmp::min(cmp::min((win_sz - sent_data) as usize, cb.sender.mss), (effective_cwnd - sent_data) as usize);
+        let max_size = cmp::min(
+            cmp::min((win_sz - sent_data) as usize, cb.sender.mss),
+            (effective_cwnd - sent_data) as usize,
+            );
         let segment_data = cb
             .sender
             .pop_unsent(max_size)

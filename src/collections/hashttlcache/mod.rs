@@ -5,8 +5,8 @@
 mod tests;
 
 use std::{
-    collections::HashMap,
     collections::hash_map::Entry as HashMapEntry,
+    collections::HashMap,
     hash::Hash,
     time::{Duration, Instant},
 };

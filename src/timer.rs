@@ -1,8 +1,5 @@
 use futures::future::FusedFuture;
-use futures_intrusive::intrusive_pairing_heap::{
-    HeapNode,
-    PairingHeap,
-};
+use futures_intrusive::intrusive_pairing_heap::{HeapNode, PairingHeap};
 use std::{
     cell::RefCell,
     future::Future,
@@ -10,15 +7,8 @@ use std::{
     ops::Deref,
     pin::Pin,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
-    time::{
-        Duration,
-        Instant,
-    },
+    task::{Context, Poll, Waker},
+    time::{Duration, Instant},
 };
 
 pub trait TimerPtr: Sized {
@@ -177,7 +167,7 @@ impl<P: TimerPtr> Future for WaitFuture<P> {
                         }
                         Poll::Pending
                     }
-                },
+                }
                 PollState::Registered => {
                     if wait_node
                         .task
@@ -187,7 +177,7 @@ impl<P: TimerPtr> Future for WaitFuture<P> {
                         wait_node.task = Some(cx.waker().clone());
                     }
                     Poll::Pending
-                },
+                }
                 PollState::Expired => Poll::Ready(()),
             }
         };
@@ -226,20 +216,14 @@ impl<P: TimerPtr> Drop for WaitFuture<P> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        Timer,
-        TimerRc,
-    };
+    use super::{Timer, TimerRc};
     use futures::task::noop_waker_ref;
     use std::{
         future::Future,
         pin::Pin,
         rc::Rc,
         task::Context,
-        time::{
-            Duration,
-            Instant,
-        },
+        time::{Duration, Instant},
     };
 
     #[test]

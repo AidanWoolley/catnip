@@ -1,26 +1,13 @@
 use crate::{
-    collections::watched::WatchedValue,
-    fail::Fail,
-    protocols::tcp::SeqNumber,
-    runtime::Runtime,
+    collections::watched::WatchedValue, fail::Fail, protocols::tcp::SeqNumber, runtime::Runtime,
 };
 use std::{
     cell::RefCell,
-    collections::{
-        BTreeMap,
-        VecDeque,
-    },
+    collections::{BTreeMap, VecDeque},
     convert::TryInto,
     num::Wrapping,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
-    time::{
-        Duration,
-        Instant,
-    },
+    task::{Context, Poll, Waker},
+    time::{Duration, Instant},
 };
 
 const RECV_QUEUE_SZ: usize = 2048;
@@ -239,7 +226,9 @@ impl<RT: Runtime> Receiver<RT> {
 
         self.recv_seq_no.modify(|r| r + Wrapping(buf.len() as u32));
         self.recv_queue.borrow_mut().push_back(buf);
-        if let Some(w) = self.waker.borrow_mut().take() { w.wake() }
+        if let Some(w) = self.waker.borrow_mut().take() {
+            w.wake()
+        }
 
         // TODO: How do we handle when the other side is in PERSIST state here?
         if self.ack_deadline.get().is_none() {
@@ -268,15 +257,10 @@ impl<RT: Runtime> Receiver<RT> {
 mod tests {
     use super::Receiver;
     use crate::collections::bytes::BytesMut;
-    use crate::{
-        fail::Fail,
-    };
-    use must_let::must_let;
-    use std::{
-        num::Wrapping,
-        time::Instant,
-    };
+    use crate::fail::Fail;
     use crate::test_helpers::TestRuntime;
+    use must_let::must_let;
+    use std::{num::Wrapping, time::Instant};
 
     #[test]
     fn test_out_of_order() {

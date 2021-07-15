@@ -100,9 +100,7 @@ impl<RT: Runtime> Future for UdpOperation<RT> {
 
     fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<()> {
         match self.get_mut() {
-            UdpOperation::Connect(..) | UdpOperation::Push(..) => {
-                Poll::Ready(())
-            }
+            UdpOperation::Connect(..) | UdpOperation::Push(..) => Poll::Ready(()),
             UdpOperation::Pop(ref mut f) => Future::poll(Pin::new(f), ctx),
         }
     }

@@ -3,12 +3,12 @@
 //! mechanisms.
 use crate::{
     engine::Engine,
-    protocols::Protocol,
     fail::Fail,
     file_table::FileDescriptor,
     interop::{dmtr_qresult_t, dmtr_sgarray_t},
     operations::OperationResult,
     protocols::ipv4::Endpoint,
+    protocols::Protocol,
     runtime::Runtime,
     scheduler::{Operation, SchedulerHandle},
 };
