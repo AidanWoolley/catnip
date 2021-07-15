@@ -42,7 +42,6 @@ type OutgoingReceiver<T> = mpsc::UnboundedReceiver<OutgoingReq<T>>;
 ///
 struct UdpPeerInner<RT: Runtime> {
     rt: RT,
-    #[allow(unused)]
     arp: arp::Peer<RT>,
     file_table: FileTable,
 
