@@ -49,18 +49,12 @@ impl<RT: Runtime> LibOS<RT> {
         _protocol: c_int,
     ) -> Result<FileDescriptor, Fail> {
         if domain != libc::AF_INET {
-            return Err(Fail::Invalid {
-                details: "Invalid domain",
-            });
+            return Err(Fail::AddressFamilySupport {});
         }
         let engine_protocol = match socket_type {
             libc::SOCK_STREAM => Protocol::Tcp,
             libc::SOCK_DGRAM => Protocol::Udp,
-            _ => {
-                return Err(Fail::Invalid {
-                    details: "Invalid socket type",
-                })
-            },
+            _ => return Err(Fail::SocketTypeSupport {}),
         };
         Ok(self.engine.socket(engine_protocol))
     }
