@@ -42,6 +42,7 @@ pub enum dmtr_opcode_t {
     DMTR_OPC_POP,
     DMTR_OPC_ACCEPT,
     DMTR_OPC_CONNECT,
+    DMTR_OPC_FAILED,
 }
 
 #[derive(Copy, Clone)]
@@ -110,7 +111,13 @@ impl dmtr_qresult_t {
                 }
             },
             OperationResult::Failed(e) => {
-                panic!("Unhandled error: {:?}", e);
+                warn!("Operation Failed: {:?}", e);
+                Self {
+                    qr_opcode: dmtr_opcode_t::DMTR_OPC_FAILED,
+                    qr_qd: qd as c_int,
+                    qr_qt: qt,
+                    qr_value: unsafe { mem::zeroed() },
+                }
             },
         }
     }
