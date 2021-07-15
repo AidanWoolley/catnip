@@ -2,11 +2,6 @@
 
 use futures::task::AtomicWaker;
 use std::{
-    fmt,
-    ops::{
-        Deref,
-        DerefMut,
-    },
     sync::{
         atomic::{
             AtomicU64,
