@@ -1,7 +1,6 @@
 [package]
 name = "catnip"
-version = "0.1.0"
-authors = ["Michael Lowell Roberts <mirobert@microsoft.com>"]
+version = "0.2.0"
 edition = "2018"
 
 [dependencies]
