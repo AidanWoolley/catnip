@@ -1,0 +1,68 @@
+name: Azure
+
+on: [push]
+
+env:
+  GITHUB_REPOSITORY: $GITHUB_REPOSITORY
+  GITHUB_SHA: $GITHUB_SHA
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    # Fetch Changes
+    - name: Fetch Changes
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOSTNAME }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSHKEY }}
+        port: ${{ secrets.PORTNUM }}
+        envs: GITHUB_REPOSITORY,GITHUB_SHA
+        script: |
+          cd $GITHUB_REPOSITORY
+          git fetch
+          git reset --hard HEAD
+          git merge '@{u}'
+          git checkout --detach $GITHUB_SHA
+    # Build
+    - name: Build
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOSTNAME }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSHKEY }}
+        port: ${{ secrets.PORTNUM }}
+        envs: GITHUB_REPOSITORY,GITHUB_SHA
+        script: |
+          source $HOME/.cargo/env
+          cd $GITHUB_REPOSITORY
+          cargo build
+    # Test
+    - name: Test
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOSTNAME }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSHKEY }}
+        port: ${{ secrets.PORTNUM }}
+        envs: GITHUB_REPOSITORY,GITHUB_SHA
+        script: |
+          source $HOME/.cargo/env
+          cd $GITHUB_REPOSITORY
+          cargo test -- --test-threads 1
+    # Post Run
+    - name: Post Run
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOSTNAME }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSHKEY }}
+        port: ${{ secrets.PORTNUM }}
+        envs: GITHUB_REPOSITORY,GITHUB_SHA
+        script: |
+          cd $GITHUB_REPOSITORY
+          git checkout master
+          git remote prune origin
