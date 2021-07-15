@@ -90,6 +90,7 @@ impl ArpCache {
     }
 
     /// Clears the ARP cache.
+    #[allow(unused)]
     pub fn clear(&mut self) {
         self.cache.clear();
     }
