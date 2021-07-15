@@ -1,6 +1,13 @@
-name: Azure
+name: Test
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+      - unstable
+      - dev
+  pull_request:
+    branches: [ master ]
 
 env:
   GITHUB_REPOSITORY: $GITHUB_REPOSITORY
