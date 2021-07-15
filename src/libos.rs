@@ -41,13 +41,37 @@ impl<RT: Runtime> LibOS<RT> {
         &self.rt
     }
 
-    /// Create a new socket.
+    ///
+    /// **Brief**
+    ///
+    /// Creates an endpoint for communication and returns a file descriptor that
+    /// refers to that endpoint. The file descriptor returned by a successful
+    /// call will be the lowest numbered file descriptor not currently open for
+    /// the process.
+    ///
+    /// The domain argument specifies a communication domain; this selects the
+    /// protocol family which will be used for communication. These families are
+    /// defined in the libc crate. Currently, the following families are supported:
+    ///
+    /// - AF_INET Internet Protocol Version 4 (IPv4)
+    ///
+    /// **Return Vale**
+    ///
+    /// Upon successful completion, a file descriptor for the newly created
+    /// socket is returned. Upon failure, `Fail` is returned instead.
+    ///
     pub fn socket(
         &mut self,
         domain: c_int,
         socket_type: c_int,
         _protocol: c_int,
     ) -> Result<FileDescriptor, Fail> {
+        trace!(
+            "socket(): domain={:?} type={:?} protocol={:?}",
+            domain,
+            socket_type,
+            _protocol
+        );
         if domain != libc::AF_INET {
             return Err(Fail::AddressFamilySupport {});
         }
