@@ -2,29 +2,18 @@
 //! the IO Queue abstraction, thus providing a standard interface for different kernel bypass
 //! mechanisms.
 use crate::{
-    engine::{
-        Engine,
-        Protocol,
-    },
+    engine::{Engine, Protocol},
     fail::Fail,
     file_table::FileDescriptor,
-    interop::{
-        dmtr_qresult_t,
-        dmtr_sgarray_t,
-    },
+    interop::{dmtr_qresult_t, dmtr_sgarray_t},
+    operations::OperationResult,
     protocols::ipv4::Endpoint,
     runtime::Runtime,
-    scheduler::{
-        Operation,
-        SchedulerHandle,
-    },
-    operations::OperationResult,
+    scheduler::{Operation, SchedulerHandle},
 };
-use must_let::must_let;
 use libc::c_int;
-use std::{
-    time::Instant,
-};
+use must_let::must_let;
+use std::time::Instant;
 
 const TIMER_RESOLUTION: usize = 64;
 const MAX_RECV_ITERS: usize = 2;
@@ -182,13 +171,23 @@ impl<RT: Runtime> LibOS<RT> {
         Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
-    pub fn pushto(&mut self, fd: FileDescriptor, sga: &dmtr_sgarray_t, to: Endpoint) -> Result<QToken, Fail> {
+    pub fn pushto(
+        &mut self,
+        fd: FileDescriptor,
+        sga: &dmtr_sgarray_t,
+        to: Endpoint,
+    ) -> Result<QToken, Fail> {
         let buf = self.rt.clone_sgarray(sga);
         let future = self.engine.pushto(fd, buf, to)?;
         Ok(self.rt.scheduler().insert(future).into_raw())
     }
 
-    pub fn pushto2(&mut self, fd: FileDescriptor, buf: RT::Buf, to: Endpoint) -> Result<QToken, Fail> {
+    pub fn pushto2(
+        &mut self,
+        fd: FileDescriptor,
+        buf: RT::Buf,
+        to: Endpoint,
+    ) -> Result<QToken, Fail> {
         let future = self.engine.pushto(fd, buf, to)?;
         Ok(self.rt.scheduler().insert(future).into_raw())
     }
@@ -218,7 +217,7 @@ impl<RT: Runtime> LibOS<RT> {
         let handle = match self.rt.scheduler().from_raw_handle(qt) {
             None => {
                 panic!("Invalid handle {}", qt);
-            },
+            }
             Some(h) => h,
         };
         if !handle.has_completed() {
