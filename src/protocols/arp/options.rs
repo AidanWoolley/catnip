@@ -3,10 +3,7 @@
 
 use crate::protocols::ethernet2::MacAddress;
 use std::collections::HashMap;
-use std::{
-    net::Ipv4Addr,
-    time::Duration,
-};
+use std::{net::Ipv4Addr, time::Duration};
 
 #[derive(Clone, Debug)]
 pub struct ArpOptions {

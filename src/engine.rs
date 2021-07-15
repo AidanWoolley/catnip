@@ -7,21 +7,12 @@ use crate::{
     file_table::{File, FileDescriptor, FileTable},
     operations::ResultFuture,
     protocols::{
-        Protocol,
         arp,
         ethernet2::frame::{EtherType2, Ethernet2Header},
-        ipv4,
-        tcp::operations::{
-            AcceptFuture,
-            ConnectFuture,
-            PopFuture,
-            PushFuture,
-        },
-        udp::{
-            UdpPopFuture,
-            UdpOperation,
-        },
-        posix,
+        ipv4, posix,
+        tcp::operations::{AcceptFuture, ConnectFuture, PopFuture, PushFuture},
+        udp::{UdpOperation, UdpPopFuture},
+        Protocol,
     },
     runtime::Runtime,
     scheduler::Operation,
@@ -115,7 +106,9 @@ impl<RT: Runtime> Engine<RT> {
         remote_endpoint: ipv4::Endpoint,
     ) -> Result<Operation<RT>, Fail> {
         if self.posix_stack {
-            let posix_op = PosixOperation::<RT>::Connect(ResultFuture::new(self.posix.connect(fd, remote_endpoint)));
+            let posix_op = PosixOperation::<RT>::Connect(ResultFuture::new(
+                self.posix.connect(fd, remote_endpoint),
+            ));
             Ok(Operation::Posix(posix_op))
         } else {
             match self.file_table.get(fd) {

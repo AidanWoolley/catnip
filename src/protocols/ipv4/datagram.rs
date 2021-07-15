@@ -1,17 +1,11 @@
-use crate::{
-    fail::Fail,
-    runtime::RuntimeBuf,
-};
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+use crate::{fail::Fail, runtime::RuntimeBuf};
+use byteorder::{ByteOrder, NetworkEndian};
 use num_traits::FromPrimitive;
 use std::{
-    convert::{
-        TryFrom,
-        TryInto,
-    },
+    convert::{TryFrom, TryInto},
     net::Ipv4Addr,
 };
 

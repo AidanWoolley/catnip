@@ -1,13 +1,13 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::super::state::ControlBlock;
 use crate::{
     fail::Fail,
     runtime::{Runtime, RuntimeBuf},
 };
 use futures::{
-    future::{
-        self,
-        Either,
-    },
+    future::{self, Either},
     FutureExt,
 };
 use std::rc::Rc;

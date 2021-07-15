@@ -2,17 +2,10 @@
 // Licensed under the MIT license.
 use crate::{
     protocols::tcp::{
-        constants::{
-            DEFAULT_MSS,
-            MAX_MSS,
-            MIN_MSS,
-        },
-        established::state::congestion_ctrl::{
-            self as cc,
-            CongestionControl
-        },
+        constants::{DEFAULT_MSS, MAX_MSS, MIN_MSS},
+        established::state::congestion_ctrl::{self as cc, CongestionControl},
     },
-    runtime::Runtime
+    runtime::Runtime,
 };
 use std::time::Duration;
 

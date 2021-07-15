@@ -27,8 +27,8 @@ use rand::{
 };
 
 use std::{
-    collections::HashMap,
     cell::RefCell,
+    collections::HashMap,
     future::Future,
     mem,
     net::Ipv4Addr,

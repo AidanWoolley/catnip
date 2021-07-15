@@ -1,10 +1,10 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use futures::task::AtomicWaker;
 use std::{
     sync::{
-        atomic::{
-            AtomicU64,
-            Ordering,
-        },
+        atomic::{AtomicU64, Ordering},
         Arc,
     },
     task::Waker,

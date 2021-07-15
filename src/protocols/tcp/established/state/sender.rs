@@ -1,7 +1,7 @@
-use super::{
-    rto::RtoCalculator,
-    congestion_ctrl as cc
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+use super::{congestion_ctrl as cc, rto::RtoCalculator};
 use crate::{
     collections::watched::WatchedValue,
     fail::Fail,
@@ -15,10 +15,7 @@ use std::{
     convert::TryInto,
     fmt,
     num::Wrapping,
-    time::{
-        Duration,
-        Instant,
-    },
+    time::{Duration, Instant},
 };
 
 pub struct UnackedSegment<RT: Runtime> {
@@ -84,7 +81,14 @@ impl<RT: Runtime> fmt::Debug for Sender<RT> {
 }
 
 impl<RT: Runtime> Sender<RT> {
-    pub fn new(seq_no: SeqNumber, window_size: u32, window_scale: u8, mss: usize, cc_constructor: cc::CongestionControlConstructor<RT>, congestion_control_options: Option<cc::Options>) -> Self {
+    pub fn new(
+        seq_no: SeqNumber,
+        window_size: u32,
+        window_scale: u8,
+        mss: usize,
+        cc_constructor: cc::CongestionControlConstructor<RT>,
+        congestion_control_options: Option<cc::Options>,
+    ) -> Self {
         Self {
             state: WatchedValue::new(SenderState::Open),
 
@@ -267,7 +271,6 @@ impl<RT: Runtime> Sender<RT> {
 
             unsent_queue.push_front(buf);
             buf = cloned_buf;
-
         }
         Some(buf)
     }
@@ -281,7 +284,8 @@ impl<RT: Runtime> Sender<RT> {
 
         // TODO: Is this the right check?
         let window_size = (window_size_hdr as u32)
-            .checked_shl(self.window_scale as u32).ok_or(Fail::Ignored {
+            .checked_shl(self.window_scale as u32)
+            .ok_or(Fail::Ignored {
                 details: "Window size overflow",
             })?;
 

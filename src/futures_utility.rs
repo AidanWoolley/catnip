@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use crate::fail::Fail;
 use async_trait::async_trait;
 use futures::future::FusedFuture;
@@ -10,14 +13,14 @@ pub(crate) trait UtilityMethods: Future + FusedFuture + Unpin {
     /// Transforms our current future to include a timeout. We either return the results of the
     /// future finishing or a Timeout errror. Whichever happens first.
     async fn with_timeout<Timer>(&mut self, timer: Timer) -> Result<Self::Output, Fail>
-    where
+        where
         Timer: Future<Output = ()>,
-    {
-        futures::select! {
-            result = self => Ok(result),
-            _ = timer.fuse() => Err(Fail::Timeout {})
+        {
+            futures::select! {
+                result = self => Ok(result),
+                _ = timer.fuse() => Err(Fail::Timeout {})
+            }
         }
-    }
 }
 
 // Implement UtiliytMethods for any Future that implements Unpin and FusedFuture.

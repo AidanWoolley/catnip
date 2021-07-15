@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 mod active_open;
 pub mod constants;
 mod established;
@@ -15,8 +18,4 @@ use std::num::Wrapping;
 
 pub type SeqNumber = Wrapping<u32>;
 
-pub use self::{
-    options::TcpOptions as Options,
-    peer::Peer,
-    established::state::congestion_ctrl as congestion_ctrl
-};
+pub use self::{established::state::congestion_ctrl, options::TcpOptions as Options, peer::Peer};

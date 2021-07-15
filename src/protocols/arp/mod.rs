@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 mod cache;
+mod msg;
 mod options;
 mod pdu;
-mod msg;
 mod peer;
 
 #[cfg(test)]

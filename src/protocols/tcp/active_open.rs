@@ -1,37 +1,23 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use super::{
     constants::FALLBACK_MSS,
-    established::state::{
-        receiver::Receiver,
-        sender::Sender,
-        ControlBlock,
-    },
+    established::state::{receiver::Receiver, sender::Sender, ControlBlock},
 };
 use crate::{
     fail::Fail,
     protocols::{
         arp,
-        ethernet2::frame::{
-            EtherType2,
-            Ethernet2Header,
-        },
+        ethernet2::frame::{EtherType2, Ethernet2Header},
         ipv4,
-        ipv4::datagram::{
-            Ipv4Header,
-            Ipv4Protocol2,
-        },
+        ipv4::datagram::{Ipv4Header, Ipv4Protocol2},
         tcp::{
-            segment::{
-                TcpHeader,
-                TcpOptions2,
-                TcpSegment,
-            },
+            segment::{TcpHeader, TcpOptions2, TcpSegment},
             SeqNumber,
         },
     },
-    runtime::{
-        Runtime,
-        RuntimeBuf
-    },
+    runtime::{Runtime, RuntimeBuf},
     scheduler::SchedulerHandle,
 };
 use std::{
@@ -40,11 +26,7 @@ use std::{
     future::Future,
     num::Wrapping,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
     time::Duration,
 };
 
@@ -110,14 +92,16 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
             None => {
                 r.waker.replace(context.waker().clone());
                 Poll::Pending
-            },
+            }
             Some(r) => Poll::Ready(r),
         }
     }
 
     fn set_result(&mut self, result: Result<ControlBlock<RT>, Fail>) {
         let mut r = self.result.borrow_mut();
-        if let Some(w) = r.waker.take() { w.wake() }
+        if let Some(w) = r.waker.take() {
+            w.wake()
+        }
         r.result.replace(result);
     }
 
@@ -170,11 +154,11 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
                 TcpOptions2::WindowScale(w) => {
                     info!("Received window scale: {}", w);
                     remote_window_scale = Some(*w);
-                },
+                }
                 TcpOptions2::MaximumSegmentSize(m) => {
                     info!("Received advertised MSS: {}", m);
                     mss = *m as usize;
-                },
+                }
                 _ => continue,
             }
         }
@@ -214,7 +198,7 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
             remote_window_scale,
             mss,
             tcp_options.congestion_ctrl_type,
-            tcp_options.congestion_ctrl_options
+            tcp_options.congestion_ctrl_options,
         );
         let receiver = Receiver::new(remote_seq_num, rx_window_size, local_window_scale);
         let cb = ControlBlock {
@@ -247,7 +231,7 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
                     Err(e) => {
                         warn!("ARP query failed: {:?}", e);
                         continue;
-                    },
+                    }
                 };
 
                 let mut tcp_hdr = TcpHeader::new(local.port, remote.port);
@@ -278,7 +262,9 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
                 rt.wait(handshake_timeout).await;
             }
             let mut r = result.borrow_mut();
-            if let Some(w) = r.waker.take() { w.wake() }
+            if let Some(w) = r.waker.take() {
+                w.wake()
+            }
             r.result.replace(Err(Fail::Timeout {}));
         }
     }

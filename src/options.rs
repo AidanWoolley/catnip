@@ -2,18 +2,10 @@
 // Licensed under the MIT license.
 
 use crate::{
-    protocols::{
-        arp,
-        ethernet2::MacAddress,
-        tcp,
-        udp,
-    },
-    runtime::Runtime
+    protocols::{arp, ethernet2::MacAddress, tcp, udp},
+    runtime::Runtime,
 };
-use rand::{
-    thread_rng,
-    Rng,
-};
+use rand::{thread_rng, Rng};
 use std::net::Ipv4Addr;
 
 #[derive(Clone, Debug)]

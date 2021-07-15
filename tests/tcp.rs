@@ -8,8 +8,8 @@
 
 use catnip::{
     fail::Fail,
-    libos::LibOS,
     interop::dmtr_opcode_t,
+    libos::LibOS,
     protocols::{ip, ipv4},
     runtime::Runtime,
 };
@@ -18,7 +18,7 @@ use crossbeam_channel::{self};
 
 use libc;
 
-use std::{convert::TryFrom, thread, net::Ipv4Addr};
+use std::{convert::TryFrom, net::Ipv4Addr, thread};
 
 mod common;
 use common::libos::*;
@@ -64,7 +64,6 @@ fn posix_tcp_connection_setup() {
 
 /// Tests if data can be successfully established.
 fn do_tcp_establish_connection(use_posix: bool, port: u16) {
-
     let (alice_tx, alice_rx) = crossbeam_channel::unbounded();
     let (bob_tx, bob_rx) = crossbeam_channel::unbounded();
 
@@ -131,7 +130,6 @@ fn posix_tcp_establish_connection() {
 
 /// Tests if data can be successfully established.
 fn do_tcp_push_remote(use_posix: bool, port: u16) {
-
     let (alice_tx, alice_rx) = crossbeam_channel::unbounded();
     let (bob_tx, bob_rx) = crossbeam_channel::unbounded();
 
@@ -176,7 +174,7 @@ fn do_tcp_push_remote(use_posix: bool, port: u16) {
             libos.use_posix_stack();
         }
 
-    let port = ip::Port::try_from(port).unwrap();
+        let port = ip::Port::try_from(port).unwrap();
         let remote = ipv4::Endpoint::new(ALICE_IPV4, port);
 
         // Open connection.
@@ -365,7 +363,6 @@ fn catnip_tcp_bad_accept() {
     do_tcp_bad_accept();
 }
 
-
 //==============================================================================
 // Bad Accept
 //==============================================================================
@@ -417,7 +414,7 @@ fn do_tcp_bad_connect(use_posix: bool, port: u16) {
         println!("BAD endpoint");
 
         // Bad endpoint.
-        let remote = ipv4::Endpoint::new(Ipv4Addr::new(0,0,0,0), port);
+        let remote = ipv4::Endpoint::new(Ipv4Addr::new(0, 0, 0, 0), port);
         let sockfd = libos.socket(libc::AF_INET, libc::SOCK_STREAM, 0).unwrap();
         let qt = libos.connect(sockfd, remote).unwrap();
         assert_eq!(libos.wait(qt).qr_opcode, dmtr_opcode_t::DMTR_OPC_FAILED);

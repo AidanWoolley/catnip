@@ -1,15 +1,15 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use futures::task::AtomicWaker;
-use std::collections::HashMap;
 use pin_project::pin_project;
+use std::collections::HashMap;
 use std::{
     borrow::Borrow,
     future::Future,
     hash::Hash,
     pin::Pin,
-    task::{
-        Context,
-        Poll,
-    },
+    task::{Context, Poll},
 };
 use unicycle::pin_slab::PinSlab;
 

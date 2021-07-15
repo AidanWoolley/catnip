@@ -1,17 +1,10 @@
-use crate::{
-    fail::Fail,
-    protocols::ethernet2::MacAddress,
-    runtime::RuntimeBuf,
-};
-use byteorder::{
-    ByteOrder,
-    NetworkEndian,
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+use crate::{fail::Fail, protocols::ethernet2::MacAddress, runtime::RuntimeBuf};
+use byteorder::{ByteOrder, NetworkEndian};
 use num_traits::FromPrimitive;
-use std::convert::{
-    TryFrom,
-    TryInto,
-};
+use std::convert::{TryFrom, TryInto};
 
 pub const MIN_PAYLOAD_SIZE: usize = 46;
 pub const ETHERNET2_HEADER_SIZE: usize = 14;
@@ -49,13 +42,12 @@ pub struct Ethernet2Header {
 impl Ethernet2Header {
     /// Creates a header for an Ethernet frame.
     pub fn new(dst_addr: MacAddress, src_addr: MacAddress, ether_type: EtherType2) -> Self {
-        Self{
+        Self {
             dst_addr,
             src_addr,
             ether_type,
         }
     }
-
 
     pub fn compute_size(&self) -> usize {
         ETHERNET2_HEADER_SIZE

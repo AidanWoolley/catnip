@@ -1,24 +1,19 @@
-use super::waker_page::{
-    WakerPage,
-    WakerPageRef,
-    WAKER_PAGE_SIZE,
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+use super::waker_page::{WakerPage, WakerPageRef, WAKER_PAGE_SIZE};
 use futures::task::AtomicWaker;
+use gen_iter::gen_iter;
 use slab::Slab;
 use std::{
     future::Future,
     pin::Pin,
     sync::Arc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
 };
-use gen_iter::gen_iter;
 
 // Adapted from https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/
-fn iter_set_bits(mut bitset: u64) -> impl Iterator<Item=usize> {
+fn iter_set_bits(mut bitset: u64) -> impl Iterator<Item = usize> {
     gen_iter!({
         while bitset != 0 {
             // `bitset & -bitset` returns a bitset with only the lowest significant bit set
@@ -35,7 +30,8 @@ enum ResultFuture<F: Future> {
 }
 
 impl<F: Future + Unpin> Future for ResultFuture<F>
-    where F::Output: Unpin
+where
+    F::Output: Unpin,
 {
     type Output = ();
 
@@ -49,7 +45,7 @@ impl<F: Future + Unpin> Future for ResultFuture<F>
                 };
                 *self_ = ResultFuture::Done(result);
                 Poll::Ready(())
-            },
+            }
             ResultFuture::Done(..) => panic!("Polled after completion"),
         }
     }
@@ -111,7 +107,10 @@ impl<F: Future> AsyncSlab<F> {
     }
 }
 
-impl<F: Future + Unpin> AsyncSlab<F> where F::Output: Unpin {
+impl<F: Future + Unpin> AsyncSlab<F>
+where
+    F::Output: Unpin,
+{
     pub fn poll(&mut self, ctx: &mut Context) {
         self.root_waker.register(ctx.waker());
 
@@ -130,7 +129,7 @@ impl<F: Future + Unpin> AsyncSlab<F> where F::Output: Unpin {
                 match Future::poll(Pin::new(&mut self.slab[ix]), &mut sub_ctx) {
                     Poll::Ready(()) => {
                         page.mark_ready(subpage_ix);
-                    },
+                    }
                     Poll::Pending => (),
                 }
             }
@@ -141,16 +140,10 @@ impl<F: Future + Unpin> AsyncSlab<F> where F::Output: Unpin {
 #[cfg(test)]
 mod tests {
     use super::AsyncSlab;
-    use futures::{
-        channel::oneshot,
-        task::noop_waker_ref,
-    };
+    use futures::{channel::oneshot, task::noop_waker_ref};
     use must_let::must_let;
     use std::{
         collections::HashMap,
-        task::{
-            Context,
-            Poll,
-        },
+        task::{Context, Poll},
     };
 }

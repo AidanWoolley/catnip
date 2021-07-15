@@ -1,9 +1,7 @@
-use std::{
-    cell::UnsafeCell,
-    mem,
-    rc::Rc,
-    task::Waker,
-};
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+use std::{cell::UnsafeCell, mem, rc::Rc, task::Waker};
 
 struct WakerSlot(UnsafeCell<Option<Waker>>);
 
@@ -30,7 +28,7 @@ impl SharedWaker {
     }
 
     // TODO: It seems this method is never used? I don't understand how the shared waker works then
-    // TOOD: since no waker is ever actually called.
+    // TODO: since no waker is ever actually called.
     #[allow(unused)]
     fn register(&self, waker: &Waker) {
         let s = unsafe {

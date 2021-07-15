@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 //! Implementation of our efficient, single-threaded task scheduler.
 //!
 //! Our scheduler holds [Operation]s in a memory slab for short
@@ -15,15 +18,9 @@
 // 2) A cloneable half that's given to the runtime. This can insert new values and drop handles.
 //
 use crate::{
-    collections::waker_page::{
-        WakerPage,
-        WakerPageRef,
-        WAKER_PAGE_SIZE,
-    },
+    collections::waker_page::{WakerPage, WakerPageRef, WAKER_PAGE_SIZE},
     protocols::{
-        tcp::operations::TcpOperation,
-        udp::UdpOperation,
-        posix::operations::PosixOperation,
+        posix::operations::PosixOperation, tcp::operations::TcpOperation, udp::UdpOperation,
     },
     runtime::Runtime,
     sync::SharedWaker,
@@ -33,11 +30,7 @@ use std::{
     future::Future,
     pin::Pin,
     rc::Rc,
-    task::{
-        Context,
-        Poll,
-        Waker,
-    },
+    task::{Context, Poll, Waker},
 };
 
 use bit_iter::*;
@@ -202,7 +195,6 @@ impl<F: Future<Output = ()> + Unpin> Scheduler<F> {
                 // Iterate through this page's bit vector polling the futures that are ready.
                 for subpage_ix in BitIter::from(notified) {
                     if subpage_ix != 0 {
-
                         // Get future using our page indices and poll it!
                         let ix = page_ix * WAKER_PAGE_SIZE + subpage_ix;
                         let waker =

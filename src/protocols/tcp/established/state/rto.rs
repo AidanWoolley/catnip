@@ -1,8 +1,8 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 use float_duration::FloatDuration;
-use std::{
-    cmp,
-    time::Duration,
-};
+use std::{cmp, time::Duration};
 
 // RFC6298
 #[derive(Debug)]
