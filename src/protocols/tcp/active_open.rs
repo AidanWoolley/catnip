@@ -28,8 +28,10 @@ use crate::{
             SeqNumber,
         },
     },
-    runtime::Runtime,
-    runtime::RuntimeBuf,
+    runtime::{
+        Runtime,
+        RuntimeBuf
+    },
     scheduler::SchedulerHandle,
 };
 use std::{
@@ -138,12 +140,16 @@ impl<RT: Runtime> ActiveOpenSocket<RT> {
             None => panic!("TODO: Clean up ARP query control flow"),
         };
         let remote_seq_num = header.seq_num + Wrapping(1);
+
+        let tcp_options = self.rt.tcp_options();
+
         let mut tcp_hdr = TcpHeader::new(self.local.port, self.remote.port);
         tcp_hdr.ack = true;
         tcp_hdr.ack_num = remote_seq_num;
+        tcp_hdr.window_size = tcp_options.receive_window_size;
+        tcp_hdr.seq_num = self.local_isn + Wrapping(1);
         debug!("Sending ACK: {:?}", tcp_hdr);
 
-        let tcp_options = self.rt.tcp_options();
         let segment = TcpSegment {
             ethernet2_hdr: Ethernet2Header {
                 dst_addr: remote_link_addr,
