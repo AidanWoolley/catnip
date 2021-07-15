@@ -57,4 +57,4 @@ pub trait CongestionControl<RT: Runtime>: SlowStartCongestionAvoidance<RT> +
     fn new(mss: usize, seq_no: SeqNumber, options: Option<options::Options>) -> Box<dyn CongestionControl<RT>> where Self: Sized;
 }
 
-pub type CongestionControlConstructor<RT: Runtime> = fn(usize, SeqNumber, Option<options::Options>) -> Box<dyn CongestionControl<RT>>;
+pub type CongestionControlConstructor<T> = fn(usize, SeqNumber, Option<options::Options>) -> Box<dyn CongestionControl<T>>;
