@@ -1,15 +1,28 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-use crate::protocols::tcp::constants::{
-    DEFAULT_MSS,
-    MAX_MSS,
-    MIN_MSS,
+use crate::{
+    protocols::tcp::{
+        constants::{
+            DEFAULT_MSS,
+            MAX_MSS,
+            MIN_MSS,
+        },
+        established::state::congestion_ctrl::{
+            self as cc,
+            CongestionControl
+        },
+    },
+    runtime::Runtime
 };
 use std::time::Duration;
 
+pub use crate::protocols::tcp::established::state::congestion_ctrl::CongestionControlConstructor;
+
 #[derive(Clone, Debug)]
-pub struct TcpOptions {
+pub struct TcpOptions<RT: Runtime> {
     pub advertised_mss: usize,
+    pub congestion_ctrl_type: CongestionControlConstructor<RT>,
+    pub congestion_ctrl_options: Option<cc::Options>,
     pub handshake_retries: usize,
     pub handshake_timeout: Duration,
     pub receive_window_size: u16,
@@ -20,10 +33,12 @@ pub struct TcpOptions {
     pub tx_checksum_offload: bool,
 }
 
-impl Default for TcpOptions {
+impl<RT: Runtime> Default for TcpOptions<RT> {
     fn default() -> Self {
         TcpOptions {
             advertised_mss: DEFAULT_MSS,
+            congestion_ctrl_type: cc::Cubic::new,
+            congestion_ctrl_options: None,
             handshake_retries: 5,
             handshake_timeout: Duration::from_secs(3),
             receive_window_size: 0xffff,
@@ -36,7 +51,7 @@ impl Default for TcpOptions {
     }
 }
 
-impl TcpOptions {
+impl<RT: Runtime> TcpOptions<RT> {
     pub fn advertised_mss(mut self, value: usize) -> Self {
         assert!(value >= MIN_MSS);
         assert!(value <= MAX_MSS);
@@ -44,8 +59,13 @@ impl TcpOptions {
         self
     }
 
-    pub fn window_scale(mut self, value: u8) -> Self {
-        self.window_scale = value;
+    pub fn congestion_ctrl_type(mut self, value: CongestionControlConstructor<RT>) -> Self {
+        self.congestion_ctrl_type = value;
+        self
+    }
+
+    pub fn congestion_control_options(mut self, value: cc::Options) -> Self {
+        self.congestion_ctrl_options = Some(value);
         self
     }
 
@@ -75,6 +95,11 @@ impl TcpOptions {
 
     pub fn trailing_ack_delay(mut self, value: Duration) -> Self {
         self.trailing_ack_delay = value;
+        self
+    }
+
+    pub fn window_scale(mut self, value: u8) -> Self {
+        self.window_scale = value;
         self
     }
 }

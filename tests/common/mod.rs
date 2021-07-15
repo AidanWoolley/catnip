@@ -96,7 +96,7 @@ struct Inner {
 
     link_addr: MacAddress,
     ipv4_addr: Ipv4Addr,
-    tcp_options: tcp::Options,
+    tcp_options: tcp::Options<TestRuntime>,
     arp_options: arp::Options,
 }
 
@@ -202,7 +202,7 @@ impl Runtime for TestRuntime {
         self.inner.borrow().ipv4_addr.clone()
     }
 
-    fn tcp_options(&self) -> tcp::Options {
+    fn tcp_options(&self) -> tcp::Options<Self> {
         self.inner.borrow().tcp_options.clone()
     }
 

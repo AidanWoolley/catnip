@@ -80,27 +80,44 @@ pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
         let (base_seq, base_seq_changed) = cb.sender.base_seq_no.watch();
         futures::pin_mut!(base_seq_changed);
 
+        // Before we get cwnd for the check, we prompt it to shrink it if the connection has been idle
+        cb.sender.congestion_ctrl.on_cwnd_check_before_send(&cb.sender);
+        let (cwnd, cwnd_changed) = cb.sender.congestion_ctrl.watch_cwnd();
+        futures::pin_mut!(cwnd_changed);
+
+        // The limited transmit algorithm may increase the effective size of cwnd by up to 2 * mss
+        let (ltci, ltci_changed) = cb.sender.congestion_ctrl.watch_limited_transmit_cwnd_increase();
+        futures::pin_mut!(ltci_changed);
+
+        let effective_cwnd = cwnd + ltci;
+
         let Wrapping(sent_data) = sent_seq - base_seq;
-        if win_sz <= sent_data {
+        if win_sz <= sent_data || effective_cwnd <= sent_data {
             futures::select_biased! {
                 _ = base_seq_changed => continue 'top,
                 _ = sent_seq_changed => continue 'top,
                 _ = win_sz_changed => continue 'top,
+                _ = cwnd_changed => continue 'top,
+                _ = ltci_changed => continue 'top,
             }
         }
+
+        // Past this point we have data to send and it's valid to send it!
 
         // TODO: Nagle's algorithm
         // TODO: Silly window syndrome
         let remote_link_addr = cb.arp.query(cb.remote.address()).await?;
 
         // Form an outgoing packet.
-        let max_size = cmp::min((win_sz - sent_data) as usize, cb.sender.mss);
+        let max_size = cmp::min(cmp::min((win_sz - sent_data) as usize, cb.sender.mss), (effective_cwnd - sent_data) as usize);
         let segment_data = cb
             .sender
             .pop_unsent(max_size)
             .expect("No unsent data with sequence number gap?");
         let segment_data_len = segment_data.len();
         assert!(segment_data_len > 0);
+
+        cb.sender.congestion_ctrl.on_send(&cb.sender, sent_data);
 
         let mut header = cb.tcp_header();
         header.seq_num = sent_seq;
