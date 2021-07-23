@@ -25,13 +25,13 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh    # Get Rust too
 
 **3. Build Catnip**
 ```
-cd $WORKDIR/demikernel    # Switch to working directory.
+cd $WORKDIR/catnip    # Switch to working directory.
 cargo build               # Build catnip.
 ```
 
 **4. Run Regression Tests**
 ```
-cd $WORKDIR/demikernel           # Switch to working directory.
+cd $WORKDIR/catnip           # Switch to working directory.
 cargo test -- --test-threads 1   # Run with a single-thread.
 ```
 
