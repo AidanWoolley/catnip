@@ -329,7 +329,7 @@ impl<RT: Runtime> LibOS<RT> {
     }
 
     pub fn is_qd_valid(&self, _fd: FileDescriptor) -> bool {
-        unimplemented!();
+        true
     }
 
     /// Given a handle representing a task in our scheduler. Return the results of this future
