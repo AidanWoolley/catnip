@@ -46,6 +46,7 @@ jobs:
         script: |
           source $HOME/.cargo/env
           cd $GITHUB_REPOSITORY
+          cargo clean
           cargo build
     # Test
     - name: Test
