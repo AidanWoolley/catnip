@@ -89,7 +89,7 @@ pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
         let effective_cwnd = cwnd + ltci;
 
         let Wrapping(sent_data) = sent_seq - base_seq;
-        if win_sz <= sent_data || effective_cwnd <= sent_data {
+        if win_sz <= sent_data || effective_cwnd <= sent_data || (effective_cwnd - sent_data) <= cb.sender.mss as u32 {
             futures::select_biased! {
                 _ = base_seq_changed => continue 'top,
                 _ = sent_seq_changed => continue 'top,
@@ -109,7 +109,7 @@ pub async fn sender<RT: Runtime>(cb: Rc<ControlBlock<RT>>) -> Result<!, Fail> {
         let max_size = cmp::min(
             cmp::min((win_sz - sent_data) as usize, cb.sender.mss),
             (effective_cwnd - sent_data) as usize,
-            );
+        );
         let segment_data = cb
             .sender
             .pop_unsent(max_size)
