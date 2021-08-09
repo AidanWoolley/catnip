@@ -27,6 +27,7 @@ extern crate derive_more;
 
 pub mod collections;
 pub mod engine;
+pub mod examples;
 pub mod fail;
 pub mod file_table;
 mod futures_utility;
